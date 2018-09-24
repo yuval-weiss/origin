@@ -88,7 +88,11 @@ class ListingsGrid extends Component {
             )}
             <div className="row">
               {showListingsIds.map(listingId => (
-                <ListingCard listingId={listingId} key={listingId} />
+                <ListingCard
+                  listingId={listingId}
+                  key={listingId}
+                  web3Account={this.props.web3Account}
+                />
               ))}
             </div>
             <Pagination
@@ -110,7 +114,8 @@ class ListingsGrid extends Component {
 
 const mapStateToProps = state => ({
   listingIds: state.marketplace.ids,
-  contractFound: state.listings.contractFound
+  contractFound: state.listings.contractFound,
+  web3Account: state.app.web3.account
 })
 
 const mapDispatchToProps = dispatch => ({

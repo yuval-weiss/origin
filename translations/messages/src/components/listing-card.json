@@ -1,5 +1,13 @@
 [
   {
+    "id": "listing-card.hide",
+    "defaultMessage": "Hide"
+  },
+  {
+    "id": "listing-card.feature",
+    "defaultMessage": "Feature"
+  },
+  {
     "id": "listing-card.pending",
     "defaultMessage": "Pending"
   },

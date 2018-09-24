@@ -70,6 +70,8 @@
   "footer.hiringLink": "Jobs",
   "listing-card-prices.loadingMessage": "Loading...",
   "listing-card-prices.ethereumCurrencyAbbrev": "ETH",
+  "listing-card.hide": "Hide",
+  "listing-card.feature": "Feature",
   "listing-card.pending": "Pending",
   "listing-card.sold": "Sold Out",
   "listing-create.navigationWarning": "Are you sure you want to leave? If you leave this page your progress will be lost.",

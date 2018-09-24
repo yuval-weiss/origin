@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { FormattedMessage } from 'react-intl'
 import $ from 'jquery'
@@ -13,6 +13,9 @@ class ListingCard extends Component {
     this.state = {
       loading: true
     }
+
+    this.handleHideListing = this.handleHideListing.bind(this)
+    this.handleFeatureListing = this.handleFeatureListing.bind(this)
   }
 
   async componentDidMount() {
@@ -47,6 +50,14 @@ class ListingCard extends Component {
     $('[data-toggle="tooltip"]').tooltip('dispose')
   }
 
+  handleHideListing(event) {
+    event.preventDefault()
+  }
+
+  handleFeatureListing(event) {
+    event.preventDefault()
+  }
+
   render() {
     const {
       // boostLevelIsPastSomeThreshold,
@@ -60,6 +71,7 @@ class ListingCard extends Component {
     const photo = pictures && pictures.length && pictures[0]
     const isPending = false // will be handled by offer status
     const isSold = !unitsRemaining
+    const showEditorialActions = localStorage.getItem('dappView') === 'admin'
 
     return (
       <div
@@ -81,6 +93,33 @@ class ListingCard extends Component {
           )}
           <div className="category placehold d-flex justify-content-between">
             <div>{category}</div>
+            {!loading &&
+              showEditorialActions &&
+              <Fragment>
+                <button
+                  className="admin-button"
+                  type="button"
+                  onClick={this.handleHideListing}
+                >
+                  <img className="mr-1" src="images/flat_cross_icon.svg" alt="Hide Listing" />
+                    <FormattedMessage
+                      id={'listing-card.hide'}
+                      defaultMessage={'Hide'}
+                    />
+                </button>
+                <button
+                  className="admin-button"
+                  type="button"
+                  onClick={this.handleFeatureListing}
+                >
+                  <img className="mr-1" src="images/star-filled.svg" alt="Feature Listing" />
+                    <FormattedMessage
+                      id={'listing-card.feature'}
+                      defaultMessage={'Feature'}
+                    />
+                </button>
+              </Fragment>
+            }
             {!loading &&
               isPending && (
               <span className="pending badge">
