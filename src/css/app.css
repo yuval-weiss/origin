@@ -5060,8 +5060,9 @@ a:not([href]):not([tabindex]).span-link {
     padding: 0;
   }
 
-  .beta-warning .content p {
-    font-size: initial;
+  .beta-warning .content .col {
+    padding-left: 14px;
+    padding-right:14px;
   }
 }
 

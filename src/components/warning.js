@@ -13,13 +13,13 @@ class Warning extends Component {
 
     return (
       <div className="warning alert alert-warning beta-warning">
-        <div className="container">
+        <div className="container content">
           <div className="row">
-            <div className="col content">
+            <div className="col">
               <div className="d-flex align-items-center">
                 <BetaBadge />
                 <div className="text-container">
-                  <p>
+                  <p className="message">
                     <strong>
                       <FormattedMessage
                         id={'warning.message'}
