@@ -12,10 +12,10 @@ class Warning extends Component {
     const networkType = currentNetwork && currentNetwork.type
 
     return (
-      <div className="warning alert alert-warning">
+      <div className="warning alert alert-warning beta-warning">
         <div className="container">
           <div className="row">
-            <div className="col">
+            <div className="col content">
               <div className="d-flex align-items-center">
                 <BetaBadge />
                 <div className="text-container">
@@ -23,7 +23,7 @@ class Warning extends Component {
                     <strong>
                       <FormattedMessage
                         id={'warning.message'}
-                        defaultMessage={`You're currently using the Origin {networkType}.`}
+                        defaultMessage={`Welcome to Origin's {networkType}.`}
                         values={{ networkType }}
                       />
                     </strong>

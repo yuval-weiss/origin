@@ -5051,6 +5051,18 @@ a:not([href]):not([tabindex]).span-link {
     left: -17px;
     right: -14px;
   }
+
+  .beta-warning .badge {
+    display: none;
+  }
+
+  .beta-warning .content {
+    padding: 0;
+  }
+
+  .beta-warning .content p {
+    font-size: initial;
+  }
 }
 
 /* sm + */
