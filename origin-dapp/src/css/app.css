@@ -5055,6 +5055,20 @@ a:not([href]):not([tabindex]).span-link {
     left: -17px;
     right: -14px;
   }
+
+  .beta-warning .badge {
+    display: none;
+  }
+
+   .beta-warning .content {
+    padding: 0;
+  }
+
+  .beta-warning .content .col {
+    font-size: initial;
+    padding-left: 14px;
+    padding-right:14px;
+  }
 }
 
 /* sm + */
@@ -5152,6 +5166,10 @@ a:not([href]):not([tabindex]).span-link {
 
   .seller-steps .list-container ol {
     padding-left: 5%;
+  }
+
+  .beta-warning .badge {
+    display: none;
   }
 }
 
