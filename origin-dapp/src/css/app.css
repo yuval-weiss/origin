@@ -73,6 +73,7 @@ p {
   color: var(--dark);
   font-size: 1.125rem;
   margin-bottom: 1rem;
+  overflow-wrap: break-word
 }
 
 fieldset {
