@@ -41,6 +41,7 @@ class ListingCreate extends Component {
 
     this.STEP = {
       PICK_SCHEMA: 1,
+      ENABLE_MESSAGING : 2,
       DETAILS: 2,
       AVAILABILITY: 3,
       BOOST: 4,
@@ -88,6 +89,9 @@ class ListingCreate extends Component {
     }
     /*
 {/* Current user needs to enable messaging. */}
+  {this.setState({
+      step: this.STEP.PICK_SCHEMA,
+      
         {canReceiveMessages &&
           !messagingEnabled && (
           <div className="roadblock">
@@ -124,6 +128,8 @@ class ListingCreate extends Component {
             </div>
           </div>
         )}
+    })
+}
     */
     this.state = { ...this.defaultState }
 
