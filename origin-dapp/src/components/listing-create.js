@@ -41,7 +41,7 @@ class ListingCreate extends Component {
 
     this.STEP = {
       PICK_SCHEMA: 1,
-      ENABLE_MESSAGING : 2,
+      ENABLE_MESSAGING: 2,
       DETAILS: 2,
       AVAILABILITY: 3,
       BOOST: 4,
@@ -89,8 +89,9 @@ class ListingCreate extends Component {
     }
     /*
 {/* Current user needs to enable messaging. */}
+  if(!this.state.messagingEnabled){
   {this.setState({
-      step: this.STEP.PICK_SCHEMA,
+      step: this.STEP.ENABLE_MESSAGING,
       
         {canReceiveMessages &&
           !messagingEnabled && (
@@ -129,6 +130,7 @@ class ListingCreate extends Component {
           </div>
         )}
     })
+  }
 }
     */
     this.state = { ...this.defaultState }
