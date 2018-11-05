@@ -1,5 +1,17 @@
 [
   {
+    "id": "MessageNew.cannotSendMessages",
+    "defaultMessage": "Before you can contact this user, you need to enable messaging."
+  },
+  {
+    "id": "MessageNew.enable",
+    "defaultMessage": "Start Messaging"
+  },
+  {
+    "id": "MessageNew.cancel",
+    "defaultMessage": "Cancel"
+  },
+  {
     "id": "listing-create.navigationWarning",
     "defaultMessage": "Are you sure you want to leave? If you leave this page your progress will be lost."
   },

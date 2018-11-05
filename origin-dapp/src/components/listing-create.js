@@ -3,6 +3,16 @@ import { Link, Prompt } from 'react-router-dom'
 import { connect } from 'react-redux'
 import { FormattedMessage, defineMessages, injectIntl } from 'react-intl'
 import Form from 'react-jsonschema-form'
+import { FormattedMessage } from 'react-intl'
+import { connect } from 'react-redux'
+import { withRouter } from 'react-router'
+
+import { enableMessaging } from 'actions/App'
+
+import Identicon from 'components/identicon'
+import Modal from 'components/modal'
+
+import origin from '../services/origin'
 
 import { showAlert } from 'actions/Alert'
 import { handleNotificationsSubscription } from 'actions/App'
@@ -87,14 +97,39 @@ class ListingCreate extends Component {
       showDetailsFormErrorMsg: false,
       showBoostTutorial: false
     }
-    /*
-{/* Current user needs to enable messaging. */}
-  if(!this.state.messagingEnabled){
-  {this.setState({
-      step: this.STEP.ENABLE_MESSAGING,
-      
-        {canReceiveMessages &&
-          !messagingEnabled && (
+ 
+ messageEnabled(){
+ prevState:default
+      this.setState({ step: this.STEP.ENABLE_MESSAGING})
+   }
+     
+  render () {
+  
+  const {
+      messagingEnabled,
+      open,
+      recipientAddress,
+      handleToggle
+    } = this.props
+    const { content } = this.state
+    const canReceiveMessages = origin.messaging.canReceiveMessages(
+      recipientAddress
+    )
+    const mapStateToProps = state => {
+  return {
+    messagingEnabled: state.app.messagingEnabled
+  }
+}
+
+const mapDispatchToProps = dispatch => ({
+  enableMessaging: () => dispatch(enableMessaging())
+})
+    const canDeliverMessage = origin.messaging.canConverseWith(recipientAddress)
+  
+  }
+  return(
+     
+
           <div className="roadblock">
             <FormattedMessage
               id={'MessageNew.cannotSendMessages'}
@@ -128,18 +163,9 @@ class ListingCreate extends Component {
               </a>
             </div>
           </div>
-        )}
-    })
-  }
-}
-    */
-    this.state = { ...this.defaultState }
+    } 
 
-    this.intlMessages = defineMessages({
-      navigationWarning: {
-        id: 'listing-create.navigationWarning',
-        defaultMessage:
-          'Are you sure you want to leave? If you leave this page your progress will be lost.'
+   
       }
     })
 
