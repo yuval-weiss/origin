@@ -96,12 +96,30 @@ class ListingCreate extends Component {
       },
       showDetailsFormErrorMsg: false,
       showBoostTutorial: false
-    }
- 
- messageEnabled(){
- prevState:default
-      this.setState({ step: this.STEP.ENABLE_MESSAGING})
-   }
+    };
+ /*
+ onBackToPickSchema() {
+    this.setState({
+      step: this.STEP.PICK_SCHEMA,
+      selectedSchema: null,
+      schemaFetched: false,
+      formData: null
+    })
+  }
+
+  backFromBoostStep() {
+    const previousStep = this.state.isFractionalListing ? this.STEP.AVAILABILITY : this.STEP.DETAILS
+    this.setState({ step: previousStep })
+  }
+
+
+*/
+
+ function  messageEnabled()  {
+
+      const previousStep = this.state.isFractionalListining ? this.PICK_SCHEMA:this.ENABLE_MESSAGING
+      step = this.STEP.ENABLE_MESSAGING
+   
      
   render () {
   
@@ -115,18 +133,15 @@ class ListingCreate extends Component {
     const canReceiveMessages = origin.messaging.canReceiveMessages(
       recipientAddress
     )
-    const mapStateToProps = state => {
-  return {
-    messagingEnabled: state.app.messagingEnabled
-  }
-}
+  
+
 
 const mapDispatchToProps = dispatch => ({
   enableMessaging: () => dispatch(enableMessaging())
 })
     const canDeliverMessage = origin.messaging.canConverseWith(recipientAddress)
   
-  }
+  
   return(
      
 
@@ -163,11 +178,11 @@ const mapDispatchToProps = dispatch => ({
               </a>
             </div>
           </div>
-    } 
 
-   
-      }
-    })
+	)
+    }
+}   
+
 
     this.checkOgnBalance = this.checkOgnBalance.bind(this)
     this.handleSchemaSelection = this.handleSchemaSelection.bind(this)
