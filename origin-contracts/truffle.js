@@ -15,7 +15,7 @@ truffleSetup = {
       host: "localhost",
       port: 8545,
       network_id: "*" // Match any network id
-    },
+    }
   },
   coverage: {
     host: "localhost",
@@ -99,7 +99,7 @@ if (process.env.ORIGIN_MNEMONIC) {
     provider: function() {
       return withNonceTracker(new HDWalletProvider(
         process.env.ORIGIN_MNEMONIC,
-        'https://eth.dev.originprotocol.com/rpc',
+        'https://testnet.originprotocol.com/rpc',
         0,
         numAddressesToUnlock
       ))
