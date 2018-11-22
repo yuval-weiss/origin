@@ -56,14 +56,14 @@
       "type": "function"
     }
   ],
-  "bytecode": "0x608060405234801561001057600080fd5b506101c6806100206000396000f3006080604052600436106100565763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416634d3820eb811461005b57806376b1658814610072578063a87430ba14610087575b600080fd5b34801561006757600080fd5b506100706100de565b005b34801561007e57600080fd5b50610070610146565b34801561009357600080fd5b506100b573ffffffffffffffffffffffffffffffffffffffff60043516610172565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b3260008181526020818152604091829020805473ffffffffffffffffffffffffffffffffffffffff19163390811790915582519384529083015280517fff3eabe1067b08ba8af3e8d3191eebeae9b35de7a7aeee40f2ad1ceb6a8876079281900390910190a1565b336000908152602081905260409020805473ffffffffffffffffffffffffffffffffffffffff19169055565b60006020819052908152604090205473ffffffffffffffffffffffffffffffffffffffff16815600a165627a7a723058201e6e8cfd8feefcaf22864a33db941398825fabf09aeb64696a9208c42b1a0ee60029",
-  "deployedBytecode": "0x6080604052600436106100565763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416634d3820eb811461005b57806376b1658814610072578063a87430ba14610087575b600080fd5b34801561006757600080fd5b506100706100de565b005b34801561007e57600080fd5b50610070610146565b34801561009357600080fd5b506100b573ffffffffffffffffffffffffffffffffffffffff60043516610172565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b3260008181526020818152604091829020805473ffffffffffffffffffffffffffffffffffffffff19163390811790915582519384529083015280517fff3eabe1067b08ba8af3e8d3191eebeae9b35de7a7aeee40f2ad1ceb6a8876079281900390910190a1565b336000908152602081905260409020805473ffffffffffffffffffffffffffffffffffffffff19169055565b60006020819052908152604090205473ffffffffffffffffffffffffffffffffffffffff16815600a165627a7a723058201e6e8cfd8feefcaf22864a33db941398825fabf09aeb64696a9208c42b1a0ee60029",
+  "bytecode": "0x608060405234801561001057600080fd5b506101c6806100206000396000f3006080604052600436106100565763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416634d3820eb811461005b57806376b1658814610072578063a87430ba14610087575b600080fd5b34801561006757600080fd5b506100706100de565b005b34801561007e57600080fd5b50610070610146565b34801561009357600080fd5b506100b573ffffffffffffffffffffffffffffffffffffffff60043516610172565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b3260008181526020818152604091829020805473ffffffffffffffffffffffffffffffffffffffff19163390811790915582519384529083015280517fff3eabe1067b08ba8af3e8d3191eebeae9b35de7a7aeee40f2ad1ceb6a8876079281900390910190a1565b336000908152602081905260409020805473ffffffffffffffffffffffffffffffffffffffff19169055565b60006020819052908152604090205473ffffffffffffffffffffffffffffffffffffffff16815600a165627a7a723058208bcdf72dab99a670074af4c442f59e2d4a5bc468c146488f4fdee0a7baf0e6c60029",
+  "deployedBytecode": "0x6080604052600436106100565763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416634d3820eb811461005b57806376b1658814610072578063a87430ba14610087575b600080fd5b34801561006757600080fd5b506100706100de565b005b34801561007e57600080fd5b50610070610146565b34801561009357600080fd5b506100b573ffffffffffffffffffffffffffffffffffffffff60043516610172565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b3260008181526020818152604091829020805473ffffffffffffffffffffffffffffffffffffffff19163390811790915582519384529083015280517fff3eabe1067b08ba8af3e8d3191eebeae9b35de7a7aeee40f2ad1ceb6a8876079281900390910190a1565b336000908152602081905260409020805473ffffffffffffffffffffffffffffffffffffffff19169055565b60006020819052908152604090205473ffffffffffffffffffffffffffffffffffffffff16815600a165627a7a723058208bcdf72dab99a670074af4c442f59e2d4a5bc468c146488f4fdee0a7baf0e6c60029",
   "sourceMap": "264:618:11:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;264:618:11;;;;;;;",
   "deployedSourceMap": "264:618:11:-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;606:134;;8:9:-1;5:2;;;30:1;27;20:12;5:2;606:134:11;;;;;;802:78;;8:9:-1;5:2;;;30:1;27;20:12;5:2;802:78:11;;;;465:40;;8:9:-1;5:2;;;30:1;27;20:12;5:2;-1:-1;465:40:11;;;;;;;;;;;;;;;;;;;;;;;;;;606:134;665:9;659:5;:16;;;;;;;;;;;;:29;;-1:-1:-1;;659:29:11;678:10;659:29;;;;;;703:30;;;;;;;;;;;;;;;;;;;;;606:134::o;802:78::-;858:10;872:1;852:17;;;;;;;;;;:21;;-1:-1:-1;;852:21:11;;;802:78::o;465:40::-;;;;;;;;;;;;;;;;:::o",
   "source": "pragma solidity ^0.4.24;\n\nimport \"./ClaimHolderPresigned.sol\";\n\n/// @title UserRegistry\n/// @dev Used to keep registry of user identifies\n/// @author Matt Liu <matt@originprotocol.com>, Josh Fraser <josh@originprotocol.com>, Stan James <stan@originprotocol.com>\n\n\ncontract V00_UserRegistry {\n    /*\n    * Events\n    */\n\n    event NewUser(address _address, address _identity);\n\n    /*\n    * Storage\n    */\n\n    // Mapping from ethereum wallet to ERC725 identity\n    mapping(address => address) public users;\n\n    /*\n    * Public functions\n    */\n\n    /// @dev registerUser(): Add a user to the registry\n    function registerUser()\n        public\n    {\n        users[tx.origin] = msg.sender;\n        emit NewUser(tx.origin, msg.sender);\n    }\n\n    /// @dev clearUser(): Remove user from the registry\n    function clearUser()\n        public\n    {\n        users[msg.sender] = 0;\n    }\n}\n",
-  "sourcePath": "/Users/franck/src/MAC/origin-js/contracts/contracts/identity/V00_UserRegistry.sol",
+  "sourcePath": "/Users/tom/Code/origin/origin-contracts/contracts/identity/V00_UserRegistry.sol",
   "ast": {
-    "absolutePath": "/Users/franck/src/MAC/origin-js/contracts/contracts/identity/V00_UserRegistry.sol",
+    "absolutePath": "/Users/tom/Code/origin/origin-contracts/contracts/identity/V00_UserRegistry.sol",
     "exportedSymbols": {
       "V00_UserRegistry": [
         2152
@@ -84,7 +84,7 @@
         "src": "0:24:11"
       },
       {
-        "absolutePath": "/Users/franck/src/MAC/origin-js/contracts/contracts/identity/ClaimHolderPresigned.sol",
+        "absolutePath": "/Users/tom/Code/origin/origin-contracts/contracts/identity/ClaimHolderPresigned.sol",
         "file": "./ClaimHolderPresigned.sol",
         "id": 2111,
         "nodeType": "ImportDirective",
@@ -259,7 +259,7 @@
                           "name": "tx",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5256,
+                          "referencedDeclaration": 5303,
                           "src": "665:2:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_transaction",
@@ -301,7 +301,7 @@
                         "name": "msg",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 5244,
+                        "referencedDeclaration": 5291,
                         "src": "678:3:11",
                         "typeDescriptions": {
                           "typeIdentifier": "t_magic_message",
@@ -344,7 +344,7 @@
                           "name": "tx",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5256,
+                          "referencedDeclaration": 5303,
                           "src": "711:2:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_transaction",
@@ -373,7 +373,7 @@
                           "name": "msg",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5244,
+                          "referencedDeclaration": 5291,
                           "src": "722:3:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_message",
@@ -502,7 +502,7 @@
                           "name": "msg",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5244,
+                          "referencedDeclaration": 5291,
                           "src": "858:3:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_message",
@@ -601,7 +601,7 @@
     "src": "0:883:11"
   },
   "legacyAST": {
-    "absolutePath": "/Users/franck/src/MAC/origin-js/contracts/contracts/identity/V00_UserRegistry.sol",
+    "absolutePath": "/Users/tom/Code/origin/origin-contracts/contracts/identity/V00_UserRegistry.sol",
     "exportedSymbols": {
       "V00_UserRegistry": [
         2152
@@ -622,7 +622,7 @@
         "src": "0:24:11"
       },
       {
-        "absolutePath": "/Users/franck/src/MAC/origin-js/contracts/contracts/identity/ClaimHolderPresigned.sol",
+        "absolutePath": "/Users/tom/Code/origin/origin-contracts/contracts/identity/ClaimHolderPresigned.sol",
         "file": "./ClaimHolderPresigned.sol",
         "id": 2111,
         "nodeType": "ImportDirective",
@@ -797,7 +797,7 @@
                           "name": "tx",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5256,
+                          "referencedDeclaration": 5303,
                           "src": "665:2:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_transaction",
@@ -839,7 +839,7 @@
                         "name": "msg",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 5244,
+                        "referencedDeclaration": 5291,
                         "src": "678:3:11",
                         "typeDescriptions": {
                           "typeIdentifier": "t_magic_message",
@@ -882,7 +882,7 @@
                           "name": "tx",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5256,
+                          "referencedDeclaration": 5303,
                           "src": "711:2:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_transaction",
@@ -911,7 +911,7 @@
                           "name": "msg",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5244,
+                          "referencedDeclaration": 5291,
                           "src": "722:3:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_message",
@@ -1040,7 +1040,7 @@
                           "name": "msg",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 5244,
+                          "referencedDeclaration": 5291,
                           "src": "858:3:11",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_message",
@@ -1143,19 +1143,19 @@
     "version": "0.4.24+commit.e67f0147.Emscripten.clang"
   },
   "networks": {
-    "1": {
+    "999": {
       "events": {},
       "links": {},
-      "address": "0xa4428439ec214cc68240552ec93298d1da391114",
-      "transactionHash": "0x5f0fd1d48c04d4651d0e738aba772146f7f09d9567fbe6328405a5a1b3221796"
+      "address": "0x30753e4a8aad7f8597332e813735def5dd395028",
+      "transactionHash": "0xc0d11f88db5af8fdd1717a5412ed1fe444691598dcadd6eb0ab6cf77f0c30775"
     },
-    "4": {
+    "2222": {
       "events": {},
       "links": {},
-      "address": "0x56727c8a51b276aec911afa8d6d80d485c89d5cc",
-      "transactionHash": "0x1fb8bf412109d35f8dda3530c66745ca6d656f55b1efc46a64fcb5092bc178f4"
+      "address": "0x900779888555ccf88b9fef53e72f37ddde46155e",
+      "transactionHash": "0xef066f8d6754c9e90ca41cb2c287082c8bfca9c72ba99d8d51c496fc2e88f9ed"
     }
   },
   "schemaVersion": "2.0.1",
-  "updatedAt": "2018-10-05T05:08:59.156Z"
+  "updatedAt": "2018-11-22T00:37:00.816Z"
 }
