@@ -1,9 +1,15 @@
 pragma solidity ^0.4.24;
 
 import "../../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "../../node_modules/openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/token/ERC20/PausableToken.sol";
 import "./OriginToken.sol";
 
+/**
+ * Interface that tokens must adhere to for the token migration to work.
+ */
+// solium-disable-next-line no-empty-blocks
+contract MigratableToken is MintableToken, PausableToken { }
 
 /**
  * @title Migrates balances from one token contract to another
@@ -12,8 +18,8 @@ import "./OriginToken.sol";
  * contract must support minting tokens.
  */
 contract TokenMigration is Ownable {
-    OriginToken public fromToken;
-    OriginToken public toToken;
+    MigratableToken public fromToken;
+    MigratableToken public toToken;
     mapping (address => bool) public migrated;
     bool public finished;
 
@@ -26,7 +32,9 @@ contract TokenMigration is Ownable {
     }
 
     // @dev Public constructor
-    constructor(OriginToken _fromToken, OriginToken _toToken) public {
+    constructor(MigratableToken _fromToken, MigratableToken _toToken) public {
+        require(_fromToken.paused(), "fromToken must be paused");
+        require(_toToken.paused(), "toToken must be paused");
         owner = msg.sender;
         fromToken = _fromToken;
         toToken = _toToken;
@@ -66,6 +74,4 @@ contract TokenMigration is Ownable {
         toToken.transferOwnership(_newTokenOwner);
         emit MigrationFinished();
     }
-
-    // TODO: revisit whether we want to migrate approvals
 }
