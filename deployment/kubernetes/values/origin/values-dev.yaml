@@ -1,0 +1,42 @@
+databaseInstance: origin-214503:us-west1:dev
+
+# origin-bridge
+bridgeImage: origin-bridge
+bridgeImageTag: 'a263250'
+
+# origin-dapp
+dappImage: origin-dapp
+dappImageTag: '0cdcc9f'
+
+# Origin network configuration
+gethTxReplicas: 1
+gethMinerReplicas: 2
+gethMinerCpuLimit: 0.5
+
+# ipfs
+ipfsImage: ipfs/go-ipfs
+ipfsImageTag: master
+
+# ipfs-proxy
+ipfsProxyImage: ipfs-proxy
+ipfsProxyImageTag: 'a6f8898'
+
+# origin-faucet
+faucetImage: origin-faucet
+faucetImageTag: 'd001796'
+
+# event-listener
+eventlistenerImage: event-listener
+eventlistenerImageTag: 'afe6cf0'
+
+# origin-discovery
+discoveryImage: origin-discovery
+discoveryImageTag: 'afe6cf0'
+
+# origin-messaging
+messagingImage: origin-messaging
+messagingImageTag: '4dc317b'
+
+# origin-notifications
+notificationsImage: origin-notifications
+notificationsImageTag: '964b63e'

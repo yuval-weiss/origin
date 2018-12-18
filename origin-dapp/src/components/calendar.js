@@ -56,11 +56,11 @@ class Calendar extends Component {
       showSellerActionBtns: false,
       hideRecurringEventCheckbox: false
     }
+
+    this.localizer = BigCalendar.momentLocalizer(moment)
   }
 
   componentWillMount() {
-    BigCalendar.momentLocalizer(moment)
-    
     if (this.props.slots) {
       const events = generateCalendarSlots(this.props.slots).map((slot) =>  {
         return { 
@@ -454,8 +454,8 @@ class Calendar extends Component {
                            ${userType === 'buyer' ? ' buyer-view' : ''}
                            ${viewType === 'daily' ? ' daily-view' : ' hourly-view'}`}>
             <div className="calendar-nav">
-              <img onClick={this.prevPeriod} className="prev-period" src="/images/carat-dark.svg" />
-              <img onClick={this.nextPeriod} className="next-period" src="/images/carat-dark.svg" />
+              <img onClick={this.prevPeriod} className="prev-period" src="/images/caret-dark.svg" />
+              <img onClick={this.nextPeriod} className="next-period" src="/images/caret-dark.svg" />
             </div>
             <BigCalendar
               components={{
@@ -476,6 +476,7 @@ class Calendar extends Component {
               onNavigate={ this.renderRecurringEvents }
               slotPropGetter={ this.slotPropGetter }
               scrollToTime={ moment(this.state.defaultDate).hour(8).toDate() }
+              localizer={this.localizer}
             />
             {
               userType === 'seller' &&

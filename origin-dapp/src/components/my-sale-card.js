@@ -1,7 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { Link } from 'react-router-dom'
-import $ from 'jquery'
 import moment from 'moment'
 import { FormattedMessage, injectIntl } from 'react-intl'
 
@@ -11,6 +10,7 @@ import PurchaseProgress from 'components/purchase-progress'
 import UnnamedUser from 'components/unnamed-user'
 
 import { offerStatusToStep } from 'utils/offer'
+import { formattedAddress } from 'utils/user'
 
 class MySaleCard extends Component {
   constructor(props) {
@@ -28,18 +28,10 @@ class MySaleCard extends Component {
     this.props.fetchUser(this.props.purchase.buyer)
   }
 
-  componentDidMount() {
-    $('[data-toggle="tooltip"]').tooltip()
-  }
-
   setSoldAtTime(soldAt) {
     this.setState({
       soldAtTime: moment(soldAt).fromNow()
     })
-  }
-
-  componentWillUnmount() {
-    $('[data-toggle="tooltip"]').tooltip('dispose')
   }
 
   render() {
@@ -93,7 +85,7 @@ class MySaleCard extends Component {
                   />
                 )}
               </h2>
-              <p className="address text-muted">{user.address}</p>
+              <p className="address text-muted">{formattedAddress(user.address)}</p>
               <div className="d-flex">
                 <p className="price">
                   <FormattedMessage
@@ -179,9 +171,9 @@ class MySaleCard extends Component {
                   defaultMessage={'View Details'}
                 />
                 <img
-                  src="images/carat-blue.svg"
-                  className="carat"
-                  alt="right carat"
+                  src="images/caret-blue.svg"
+                  className="caret"
+                  alt="right caret"
                 />
               </Link>
             </p>

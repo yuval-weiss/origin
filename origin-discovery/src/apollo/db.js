@@ -12,9 +12,10 @@ const listingMetadata = require('./listing-metadata')
 function _makeListing (row) {
   return {
     id: row.id,
-    // TODO: expose blockNumber and logIndex in GraphQL schema
-    blockNumber: row.blockNumber,
-    logIndex: row.logIndex,
+    blockInfo: {
+      blockNumber: row.blockNumber,
+      logIndex: row.logIndex
+    },
     ipfsHash: row.data.ipfs.hash,
     data: row.data,
     title: row.data.title,
@@ -24,6 +25,8 @@ function _makeListing (row) {
     // TODO: price may not be defined at the listing level for all listing types.
     // For example, for fractional usage it may vary based on time slot.
     price: row.data.price,
+    commission: row.data.commission,
+    commissionPerUnit: row.data.commissionPerUnit,
     display: listingMetadata.getDisplay(row.id)
   }
 }
@@ -102,9 +105,9 @@ async function getListingsBySeller (sellerAddress) {
  * Queries DB for a listing.
  *
  * @param listingId
- * @param {Object} blockInfo - Optional max blockNumber and logIndex values (inclusive).
- *   This can be used to get the state of a listing at a given point in history.
- *   Here is an example:
+ * @param {{blockNumber: integer, logIndex: integer}} blockInfo - Optional max
+ *   blockNumber and logIndex values (inclusive). This can be used to get the
+ *   state of a listing at a given point in history. Here is an example:
  *     blockNum=1, logIndex=34 -> Listing Created by seller
  *     blockNum=2, logIndex=12 -> Offer Created by buyer
  *     blockNum=2, logIndex=56 -> Listing Updated by seller
@@ -159,14 +162,25 @@ async function getListing (listingId, blockInfo = null) {
  * @private
  */
 function _makeOffer (row) {
+  if (row.data.events.length === 0 || row.data.events[0].event !== 'OfferCreated') {
+    throw new Error('Can not find OfferCreated event')
+  }
   return {
     id: row.id,
+    blockInfo: {
+      blockNumber: row.data.events[0].blockNumber,
+      logIndex: row.data.events[0].logIndex
+    },
     ipfsHash: row.data.ipfs.hash,
     data: row.data,
     status: row.status,
     buyerAddress: row.buyerAddress,
     sellerAddress: row.sellerAddress,
-    totalPrice: row.data.totalPrice
+    totalPrice: row.data.totalPrice,
+    unitsPurchased: row.data.unitsPurchased,
+    // See https://github.com/OriginProtocol/origin/issues/1087
+    // as to why we extract commission from the ipfs data.
+    commission: row.data.ipfs.data.commission,
   }
 }
 

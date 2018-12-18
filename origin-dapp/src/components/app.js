@@ -3,12 +3,13 @@ import { HashRouter as Router, Route, Switch } from 'react-router-dom'
 import { connect } from 'react-redux'
 import { IntlProvider } from 'react-intl'
 
-import { localizeApp, saveServiceWorkerRegistration, setMobile } from 'actions/App'
+import { saveServiceWorkerRegistration } from 'actions/Activation'
+import { localizeApp, setMobile } from 'actions/App'
 import { fetchProfile } from 'actions/Profile'
 import {
   getEthBalance,
   getOgnBalance,
-  init as initWallet
+  storeAccountAddress
 } from 'actions/Wallet'
 
 // Components
@@ -36,8 +37,6 @@ import Web3Provider from 'components/web3-provider'
 import Profile from 'pages/profile/Profile'
 import User from 'pages/user/User'
 import SearchBar from 'components/search/searchbar'
-
-import 'bootstrap/dist/js/bootstrap'
 
 import { setClickEventHandler } from 'utils/analytics'
 import { initServiceWorker } from 'utils/notifications'
@@ -100,8 +99,8 @@ class App extends Component {
   }
 
   async componentDidMount() {
+    this.props.storeAccountAddress()
     this.props.fetchProfile()
-    this.props.initWallet()
     this.props.getEthBalance()
     this.props.getOgnBalance()
 
@@ -197,10 +196,10 @@ const mapDispatchToProps = dispatch => ({
   fetchProfile: () => dispatch(fetchProfile()),
   getEthBalance: () => dispatch(getEthBalance()),
   getOgnBalance: () => dispatch(getOgnBalance()),
-  initWallet: () => dispatch(initWallet()),
+  localizeApp: () => dispatch(localizeApp()),
   saveServiceWorkerRegistration: reg => dispatch(saveServiceWorkerRegistration(reg)),
   setMobile: device => dispatch(setMobile(device)),
-  localizeApp: () => dispatch(localizeApp())
+  storeAccountAddress: () => dispatch(storeAccountAddress())
 })
 
 export default connect(

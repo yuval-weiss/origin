@@ -29,29 +29,41 @@ async function deployContracts(deployer) {
 
   const marketplace00 = await V00_Marketplace.deployed()
 
+  // NOTE: These hashes need to match listings output of `start-ipfs.js`
+
+  // hawaii-house
+  // QmdThQZ2U5PLLf3g6W2k7NWaT1VA4jmy7tKJJkJm1DvNeR
   await createListing(
     marketplace00,
-    '0x551e4fd07429fd2d072ca0d6668ff1c45a03a24f03191986be9b4c30a242c2ed',
+    '0xe0ad6b61eb7252813748e2f4a1d969a4309d3c92c22ec0a0a1da8d5e61a2b1f6',
     Seller
   )
+  // lake-house
+  // QmPPWcoQZzHerT4Cf3hqhhNM9Lxg88WKzm4o9UcrM1rEb6
   await createListing(
     marketplace00,
-    '0xb1ddde9f48791e6519b6b19e4318398df8e432a4dd68e694a6e52c87810cb6cb',
+    '0x0f9747c11cff0079f15d1607089809686167b7dca24742a369958b4c9f548175',
     Seller
   )
+  // scout
+  // QmTqv9hhrwePDiE348xvzJeZR4J2zgMVMm2aNmLtF5crNe
   await createListing(
     marketplace00,
-    '0xe83be3434158c69d42c1269260d3c44eeb37c316017d3e22352dea86e6b5afaf',
+    '0x51c9bcd5f5d59d299501c81a9b93958a1041342e3f2e143fc9f88bd9ee26df83',
     Seller
   )
+  // taylor-swift-tix
+  // QmXx5Qo2xh5TWZXbsDmyquBpojpqoUVpgZt3kNgqsonw9j
   await createListing(
     marketplace00,
-    '0x0f70fe3695f72660752fde3eb6d6aa02290758bc7cf6111f4e1e6bcb53c42633',
+    '0x8ecc70d4c694d22f72efbbe154fba7b4c9bae69f0b6f02d92ddcbcde24798b3a',
     Seller
   )
+  // zinc-house
+  // QmS2zpqffkTqT2agiSgk4PUrhqkbfqW2fXNMeQ8WrBnTLn
   await createListing(
     marketplace00,
-    '0x4cf7707c33291cb383d5001d7fc9d7ec9963658b2a55be1ba81db05381f293e7',
+    '0x36e909d9b6032f92c2a70058b97d9d49a7af10f70c81ad7e0eabc614449fe92b',
     Seller
   )
 }

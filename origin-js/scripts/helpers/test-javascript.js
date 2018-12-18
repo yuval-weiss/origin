@@ -3,7 +3,7 @@ const { spawn } = require('child_process')
 const testJavascript = () => {
   return new Promise((resolve, reject) => {
     const mocha = spawn(
-      './node_modules/.bin/mocha',
+      'mocha',
       [
         '-r',
         '@babel/register',
@@ -11,7 +11,8 @@ const testJavascript = () => {
         '@babel/polyfill',
         '--timeout',
         '10000',
-        '--exit'
+        '--exit',
+        '-b'
       ],
       {
         stdio: 'inherit',

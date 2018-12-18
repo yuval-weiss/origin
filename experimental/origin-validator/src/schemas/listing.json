@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
-  "$id": "http://schema.originprotocol.com/listing_v1.0.0",
+  "$id": "https://schema.originprotocol.com/listing_1.0.0.json",
   "title": "Origin Protocol core listing schema",
   "definitions": {
     "money": {
@@ -142,10 +142,6 @@
       "type": "string",
       "minLength": 10,
       "maxLength": 1024
-    },
-    "expiry": {
-      "type": "string",
-      "format": "date-time"
     },
     "media": {
       "type": "array",

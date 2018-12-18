@@ -6,14 +6,13 @@ import contracts from '../../contracts'
 
 export function listingInputToIPFS(data) {
   const ipfsData = {
-    "schemaId": "http://schema.originprotocol.com/listing_v1.0.0",
+    "schemaId": "https://schema.originprotocol.com/listing_1.0.0.json",
     "listingType": "unit",
     "category": "schema.forSale",
-    "subCategory": "schema.forSale.mushrooms",
+    "subCategory": "schema.mushrooms",
     "language": "en-US",
     "title": data.title,
     "description": data.description,
-    "expiry": "1996-12-19T16:39:57-08:00",
     "media": data.media,
     "unitsTotal": data.unitsTotal,
     "price": data.price,
@@ -22,7 +21,7 @@ export function listingInputToIPFS(data) {
       "amount": "0"
     }
   }
-  validator('http://schema.originprotocol.com/listing_v1.0.0', ipfsData)
+  validator('https://schema.originprotocol.com/listing_1.0.0.json', ipfsData)
   return ipfsData
 }
 
@@ -61,7 +60,7 @@ async function createListing(_, input) {
   return txHelper({
     tx: createListingCall.send({
       gas: 4612388,
-      from: from || web3.eth.defaultAccount
+      from: from
     }),
     mutation: 'createListing'
   })

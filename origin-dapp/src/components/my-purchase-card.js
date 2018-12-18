@@ -1,6 +1,5 @@
 import React, { Component, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import $ from 'jquery'
 import moment from 'moment'
 import { defineMessages, injectIntl } from 'react-intl'
 
@@ -16,7 +15,7 @@ class MyPurchaseCard extends Component {
     this.state = {
       listing: {},
       purchasedSlots: [],
-      loading: false 
+      loading: false
     }
 
     this.intlMessages = defineMessages({
@@ -27,10 +26,6 @@ class MyPurchaseCard extends Component {
     })
 
     this.getPrice = this.getPrice.bind(this)
-  }
-
-  componentDidMount() {
-    $('[data-toggle="tooltip"]').tooltip()
   }
 
   getPrice() {
@@ -47,14 +42,10 @@ class MyPurchaseCard extends Component {
 
   getBookingDates(whichDate) {
     const { purchasedSlots, listing } = this.state
-    const timeFormat = listing.schemaType === 'housing' ? 'LL' : 'l LT'
+    const timeFormat = listing.slotLengthUnit === 'schema.hours' ? 'l LT' : 'LL'
     const index = whichDate === 'startDate' ? 0 : purchasedSlots.length - 1
 
     return moment(purchasedSlots[index][whichDate]).format(timeFormat)
-  }
-
-  componentWillUnmount() {
-    $('[data-toggle="tooltip"]').tooltip('dispose')
   }
 
   render() {

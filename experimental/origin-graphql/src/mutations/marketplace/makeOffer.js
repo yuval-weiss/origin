@@ -2,12 +2,13 @@ import { post } from 'origin-ipfs'
 import validator from 'origin-validator'
 import txHelper, { checkMetaMask } from '../_txHelper'
 import contracts from '../../contracts'
+import parseId from '../../utils/parseId'
 
 async function makeOffer(_, data) {
   await checkMetaMask(data.from)
 
   const ipfsData = {
-    schemaId: 'http://schema.originprotocol.com/offer_v1.0.0',
+    schemaId: 'https://schema.originprotocol.com/offer_1.0.0.json',
     listingId: data.listingID,
     listingType: 'unit',
     unitsPurchased: 1,
@@ -23,7 +24,7 @@ async function makeOffer(_, data) {
       data.finalizes || Math.round(+new Date() / 1000) + 60 * 60 * 24 * 365
   }
 
-  validator('http://schema.originprotocol.com/offer_v1.0.0', ipfsData)
+  validator('https://schema.originprotocol.com/offer_1.0.0.json', ipfsData)
 
   const buyer = data.from
   const marketplace = contracts.marketplaceExec
@@ -57,7 +58,8 @@ async function makeOffer(_, data) {
     data.arbitrator
   ]
   if (data.withdraw) {
-    args.push(data.withdraw)
+    const { offerId } = parseId(data.withdraw)
+    args.push(offerId)
   }
 
   const tx = marketplace.methods.makeOffer(...args).send({

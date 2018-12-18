@@ -76,7 +76,7 @@ class PhotoPicker extends Component {
     const imagePromises = picUrls.map(url => {
       return new Promise(async resolve => {
         const image = new Image()
-        image.crossOrigin = 'anonymous' 
+        image.crossOrigin = 'anonymous'
 
         image.onload = function() {
           const canvas = document.createElement('canvas')
@@ -95,7 +95,7 @@ class PhotoPicker extends Component {
     return Promise.all(imagePromises)
   }
 
-  async onFileSelected(e) {
+  onFileSelected(e) {
     if (e.target.files && e.target.files.length > 0) {
       const imageFiles = e.target.files
       const pictures = [...this.state.pictures]
@@ -103,20 +103,20 @@ class PhotoPicker extends Component {
       for (const key in imageFiles) {
         if (imageFiles.hasOwnProperty(key)) {
           const file = imageFiles[key]
-          const croppedImageFile = await generateCroppedImage(file)
-          const croppedImageUri = await getDataUri(croppedImageFile)
 
-          pictures.push({
-            originalImageFile: file,
-            croppedImageUri
+          generateCroppedImage(file, { aspectRatio: 4/3, centerCrop: true }, (dataUri) => {
+            pictures.push({
+              originalImageFile: file,
+              croppedImageUri: dataUri
+            })
+
+            this.setState(
+              { pictures },
+              () => this.props.onChange(this.picURIsOnly(pictures))
+            )
           })
         }
       }
-
-      this.setState(
-        { pictures },
-        () => this.props.onChange(this.picURIsOnly(pictures))
-      )
     }
   }
 
@@ -132,6 +132,7 @@ class PhotoPicker extends Component {
     let showMaxImageCountMsg = false
     const imgInput = document.getElementById('photo-picker-input')
     const pictures = this.state.pictures
+
     pictures[this.state.reCropImgIndex] = {
       originalImageFile: imageFileObj,
       croppedImageUri
@@ -162,12 +163,17 @@ class PhotoPicker extends Component {
   }
 
   removePhoto(indexToRemove) {
-    this.setState({
-      pictures: this.state.pictures.filter(
-        (picture, idx) => idx !== indexToRemove
-      ),
-      showMaxImageCountMsg: false
-    })
+    const pictures = this.state.pictures.filter(
+      (picture, idx) => idx !== indexToRemove
+    )
+
+    this.setState(
+      {
+        pictures,
+        showMaxImageCountMsg: false
+      },
+      () => this.props.onChange(this.picURIsOnly(pictures))
+    )
   }
 
   setHelpText() {
@@ -226,14 +232,12 @@ class PhotoPicker extends Component {
 
     return (
       <Fragment>
-        {showCropModal &&
-          <ImageCropper
-            isOpen={showCropModal}
-            imageFileObj={imageFileObj}
-            onCropComplete={this.onCropComplete}
-            onCropCancel={this.onCropCancel}
-          />
-        }
+        <ImageCropper
+          isOpen={showCropModal}
+          imageFileObj={imageFileObj}
+          onCropComplete={this.onCropComplete}
+          onCropCancel={this.onCropCancel}
+        />
         <div className="photo-picker">
           <label className="photo-picker-container" htmlFor="photo-picker-input">
             <img
@@ -319,19 +323,21 @@ class PhotoPicker extends Component {
                           {...provided.dragHandleProps}
                         >
                           <img src={
-                              typeof pic == 'object' ?
+                              typeof pic === 'object' ?
                               pic.croppedImageUri :
                               pic
                             }
                           />
-                          <a
-                            className="re-crop-image image-overlay-btn"
-                            aria-label="Re-Crop Image"
-                            title={this.props.intl.formatMessage(this.intlMessages.reCropImage)}
-                            onClick={() => this.reCropImage(pic, idx)}
-                          >
-                            <span aria-hidden="true">&#9635;</span>
-                          </a>
+                          {typeof pic === 'object' &&
+                            <a
+                              className="re-crop-image image-overlay-btn"
+                              aria-label="Re-Crop Image"
+                              title={this.props.intl.formatMessage(this.intlMessages.reCropImage)}
+                              onClick={() => this.reCropImage(pic, idx)}
+                            >
+                              <span aria-hidden="true">&#9635;</span>
+                            </a>
+                          }
                           <a
                             className="cancel-image image-overlay-btn"
                             aria-label="Delete Image"

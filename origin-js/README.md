@@ -2,7 +2,7 @@
 
 ![origin_npm_version](https://img.shields.io/npm/v/origin.svg?style=flat-square&colorA=111d28&colorB=1a82ff)
 [![origin_license](https://img.shields.io/badge/license-MIT-6e3bea.svg?style=flat-square&colorA=111d28)](https://github.com/OriginProtocol/origin/blob/master/origin-js/LICENSE)
-[![origin_travis_banner](https://img.shields.io/travis/OriginProtocol/origin-js/master.svg?style=flat-square&colorA=111d28)](https://travis-ci.org/OriginProtocol/origin-js)
+[![origin_travis_banner](https://img.shields.io/travis/OriginProtocol/origin/master.svg?style=flat-square&colorA=111d28)](https://travis-ci.org/OriginProtocol/origin)
 
 Head to https://www.originprotocol.com/developers to learn more about what we're building and how to get involved.
 
@@ -49,7 +49,7 @@ A browser-compatible plain javascript file `origin.js` is available in the [Rele
 
 ### Command Line (All Tests)
 
-Our full test suite can be run with:
+We use the [mocha test framework](https://mochajs.org/). The full test suite can be run with:
 
 ```
 npm run test
@@ -60,6 +60,11 @@ npm run test
 To run tests and automatically re-run when files change:
 ```
 npm run test:jsw
+```
+
+To run a subset of tests, you can use mocha's `-g` option followed by a pattern. For example to run the unit tests for the marketplace resource, do:
+```
+npm run test:js -g "Marketplace Resource"
 ```
 
 ## Troubleshooting

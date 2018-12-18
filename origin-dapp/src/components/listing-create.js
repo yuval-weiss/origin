@@ -1,11 +1,14 @@
 import React, { Component, Fragment } from 'react'
+import { withRouter } from 'react-router'
 import { Link, Prompt } from 'react-router-dom'
 import { connect } from 'react-redux'
 import { FormattedMessage, defineMessages, injectIntl } from 'react-intl'
 import Form from 'react-jsonschema-form'
 
 import { showAlert } from 'actions/Alert'
-import { handleNotificationsSubscription } from 'actions/App'
+
+import { handleNotificationsSubscription } from 'actions/Activation'
+import { storeWeb3Intent } from 'actions/App'
 import {
   update as updateTransaction,
   upsert as upsertTransaction
@@ -18,15 +21,17 @@ import PriceField from 'components/form-widgets/price-field'
 import Modal from 'components/modal'
 import Calendar from './calendar'
 
-import { getListing, camelCaseToDash } from 'utils/listing'
+import { getListing } from 'utils/listing'
 import { prepareSlotsToSave } from 'utils/calendarHelpers'
-import listingSchemaMetadata from 'utils/listingSchemaMetadata.js'
+import listingSchemaMetadata from 'utils/listingSchemaMetadata'
 import WalletCard from 'components/wallet-card'
 import { ProviderModal, ProcessingModal } from 'components/modals/wait-modals'
 
+import { getBoostLevel, defaultBoostValue } from 'utils/boostUtils'
 import { dappFormDataToOriginListing } from 'utils/listing'
 import { getFiatPrice } from 'utils/priceUtils'
-import { getBoostLevel, defaultBoostValue } from 'utils/boostUtils'
+import { formattedAddress } from 'utils/user'
+
 import {
   translateSchema,
   translateListingCategory
@@ -34,6 +39,7 @@ import {
 
 import origin from '../services/origin'
 
+const { web3 } = origin.contractService
 const enableFractional = process.env.ENABLE_FRACTIONAL === 'true'
 
 class ListingCreate extends Component {
@@ -41,42 +47,36 @@ class ListingCreate extends Component {
     super(props)
 
     this.STEP = {
-      PICK_SCHEMA: 1,
-      DETAILS: 2,
-      AVAILABILITY: 3,
-      BOOST: 4,
-      PREVIEW: 5,
-      METAMASK: 6,
-      PROCESSING: 7,
-      SUCCESS: 8,
-      ERROR: 9
+      PICK_CATEGORY: 1,
+      PICK_SUBCATEGORY: 2, // NOTE: this is a mobile-only step
+      DETAILS: 3,
+      AVAILABILITY: 4,
+      BOOST: 5,
+      PREVIEW: 6,
+      METAMASK: 7,
+      PROCESSING: 8,
+      SUCCESS: 9,
+      ERROR: 10
     }
 
-    // TODO(John) - remove once fractional usage is enabled by default
-    this.fractionalSchemaTypes = []
-
-    if (enableFractional) {
-      this.fractionalSchemaTypes = [
-        'housing',
-        'services'
-      ]
-    }
-
-    this.schemaList = listingSchemaMetadata.listingTypes.map(listingType => {
+    this.categoryList = listingSchemaMetadata.listingTypes.map(listingType => {
       listingType.name = props.intl.formatMessage(listingType.translationName)
       return listingType
     })
 
     this.defaultState = {
-      step: this.STEP.PICK_SCHEMA,
+      step: this.STEP.PICK_CATEGORY,
       selectedBoostAmount: props.wallet.ognBalance ? defaultBoostValue : 0,
-      selectedSchemaType: null,
+      selectedCategory: null,
+      selectedCategoryName: null,
+      selectedCategorySchemas: null,
+      selectedSchemaId: null,
       translatedSchema: null,
-      schemaExamples: null,
       schemaFetched: false,
       isFractionalListing: false,
       isEditMode: false,
       fractionalTimeIncrement: null,
+      showNoCategorySelectedError: false,
       showNoSchemaSelectedError: false,
       formListing: {
         formData: {
@@ -95,15 +95,22 @@ class ListingCreate extends Component {
         id: 'listing-create.navigationWarning',
         defaultMessage:
           'Are you sure you want to leave? If you leave this page your progress will be lost.'
+      },
+      selectOne: {
+        id: 'listing-create.selectOne',
+        defaultMessage: 'Select One'
       }
     })
 
     this.checkOgnBalance = this.checkOgnBalance.bind(this)
+    this.handleCategorySelection = this.handleCategorySelection.bind(this)
+    this.handleCategorySelectNextBtn = this.handleCategorySelectNextBtn.bind(this)
     this.handleSchemaSelection = this.handleSchemaSelection.bind(this)
+    this.renderDetailsForm = this.renderDetailsForm.bind(this)
     this.onDetailsEntered = this.onDetailsEntered.bind(this)
     this.onAvailabilityEntered = this.onAvailabilityEntered.bind(this)
     this.backFromBoostStep = this.backFromBoostStep.bind(this)
-    this.onBackToPickSchema = this.onBackToPickSchema.bind(this)
+    this.backFromDetailsStep = this.backFromDetailsStep.bind(this)
     this.onFormDataChange = this.onFormDataChange.bind(this)
     this.onReview = this.onReview.bind(this)
     this.pollOgnBalance = this.pollOgnBalance.bind(this)
@@ -116,20 +123,23 @@ class ListingCreate extends Component {
   async componentDidMount() {
     // If listingId prop is passed in, we're in edit mode, so fetch listing data
     if (this.props.listingId) {
+      this.props.storeWeb3Intent('edit a listing')
+
       try {
         // Pass false as second param so category doesn't get translated
         // because the form only understands the category ID, not the translated phrase
         const listing = await getListing(this.props.listingId, false)
+
         this.ensureUserIsSeller(listing.seller)
         this.setState({
           formListing: {
             formData: listing
           },
-          selectedSchemaType: listing.schemaType,
+          selectedSchemaId: listing.dappSchemaId,
           selectedBoostAmount: listing.boostValue,
           isEditMode: true
         })
-        await this.handleSchemaSelection(camelCaseToDash(listing.schemaType))
+        this.renderDetailsForm(listing.schema)
         this.setState({
           step: this.STEP.DETAILS,
         })
@@ -137,13 +147,20 @@ class ListingCreate extends Component {
         console.error(`Error fetching contract or IPFS info for listing: ${this.props.listingId}`)
         console.error(error)
       }
+    } else if (web3.currentProvider.isOrigin || !this.props.messagingEnabled) {
+      if (!origin.contractService.walletLinker) {
+        this.props.history.push('/')
+      }
+      this.props.storeWeb3Intent('create a listing')
     }
   }
 
   ensureUserIsSeller(sellerAccount) {
-    const { web3Account } = this.props
+    const { wallet } = this.props
 
-    if ( web3Account && web3Account.toUpperCase() !== sellerAccount.toUpperCase()) {
+    if (
+      wallet.address &&
+      formattedAddress(wallet.address) !== formattedAddress(sellerAccount)) {
       alert('⚠️ Only the seller can update a listing')
       window.location.href = '/'
     }
@@ -172,7 +189,7 @@ class ListingCreate extends Component {
 
   detectNeedForBoostTutorial() {
     // show if 0 OGN and...
-    !this.props.wallet.ognBalance &&
+    !Number(this.props.wallet.ognBalance) &&
       // ...tutorial has not been expanded or skipped via "Review"
       // !JSON.parse(localStorage.getItem('boostTutorialViewed')) &&
       this.setState({
@@ -186,64 +203,150 @@ class ListingCreate extends Component {
     }, 10000)
   }
 
-  handleSchemaSelection(selectedSchemaType) {
-    const isFractionalListing = this.fractionalSchemaTypes.includes(selectedSchemaType)
+  handleCategorySelection(selectedCategory) {
+    const trimmedCategory = selectedCategory.replace('schema.', '')
+    const schemaArray = listingSchemaMetadata &&
+      listingSchemaMetadata.listingSchemasByCategory &&
+      listingSchemaMetadata.listingSchemasByCategory[trimmedCategory]
+    const schemaArrayWithNames = schemaArray.map(schemaObj => {
+      schemaObj.name = this.props.intl.formatMessage(schemaObj.translationName)
+      return schemaObj
+    })
+    const selectedCategoryObj = listingSchemaMetadata.listingTypes.find(
+      listingType => listingType.type === trimmedCategory 
+    )
+    const stateToSet = {
+      selectedCategory: trimmedCategory,
+      selectedCategoryName: this.props.intl.formatMessage(selectedCategoryObj.translationName),
+      selectedCategorySchemas: schemaArrayWithNames
+    }
 
-    return fetch(`schemas/${selectedSchemaType}.json`)
+    if (this.props.mobileDevice) {
+      stateToSet.step = this.STEP.PICK_SUBCATEGORY
+      window.scrollTo(0, 0)
+    }
+
+    this.setState(stateToSet)
+  }
+
+  handleCategorySelectNextBtn() {
+    // (The button that calls this method is only visibile on non-mobile devices)
+    // check for category and schema selection and send to DETAILS step or show error
+    if (!this.state.selectedCategory) {
+      this.setState({
+        showNoCategorySelectedError: true
+      })
+    } else if (!this.state.selectedSchemaId) {
+      this.setState({
+        showNoSchemaSelectedError: true
+      })
+    } else {
+      this.setState({
+        step: this.STEP.DETAILS,
+        showNoCategorySelectedError: false,
+        showNoSchemaSelectedError: false
+      })
+    }
+  }
+
+  handleSchemaSelection(selectedSchemaId) {
+    let schemaFileName = selectedSchemaId
+
+    // On desktop screen sizes, we use the onChange event of a <select> to call this method.
+    if (event.target.value) {
+      schemaFileName = event.target.value
+    }
+
+    return fetch(`schemas/${schemaFileName}`)
       .then(response => response.json())
       .then(schemaJson => {
-        PriceField.defaultProps = {
-          options: {
-            selectedSchema: schemaJson
-          }
-        }
-        this.uiSchema = {
-          examples: {
-            'ui:widget': 'hidden'
-          },
-          sellerSteps: {
-            'ui:widget': 'hidden'
-          },
-          price: {
-            'ui:field': PriceField
-          },
-          description: {
-            'ui:widget': 'textarea',
-            'ui:options': {
-              rows: 4
-            }
-          },
-          pictures: {
-            'ui:widget': PhotoPicker
-          }
-        }
-
-        if (isFractionalListing) {
-          this.uiSchema.price = {
-            'ui:widget': 'hidden'
-          }
-        }
-
-        const translatedSchema = translateSchema(schemaJson, selectedSchemaType)
-
-        this.setState({
-          selectedSchemaType,
-          schemaFetched: true,
-          step: this.STEP.DETAILS,
-          fractionalTimeIncrement: !isFractionalListing ? null : 
-            selectedSchemaType === 'housing' ? 'daily' : 'hourly',
-          showNoSchemaSelectedError: false,
-          translatedSchema,
-          isFractionalListing,
-          schemaExamples:
-            translatedSchema &&
-            translatedSchema.properties &&
-            translatedSchema.properties.examples &&
-            translatedSchema.properties.examples.enumNames
-        })
-
-        window.scrollTo(0, 0)
+        this.setState({ selectedSchemaId: schemaFileName })
+        this.renderDetailsForm(schemaJson)
       })
+  }
+
+  renderDetailsForm(schemaJson) {
+    PriceField.defaultProps = {
+      options: {
+        selectedSchema: schemaJson
+      }
+    }
+    this.uiSchema = {
+      slotLength: {
+        'ui:widget': 'hidden'
+      },
+      slotLengthUnit: {
+        'ui:widget': 'hidden'
+      },
+      examples: {
+        'ui:widget': 'hidden'
+      },
+      sellerSteps: {
+        'ui:widget': 'hidden'
+      },
+      price: {
+        'ui:field': PriceField
+      },
+      description: {
+        'ui:widget': 'textarea',
+        'ui:options': {
+          rows: 4
+        }
+      },
+      pictures: {
+        'ui:widget': PhotoPicker
+      }
+    }
+
+    const { properties } = schemaJson
+
+    // TODO(John) - remove enableFractional conditional once fractional usage is enabled by default
+    const isFractionalListing = enableFractional &&
+      properties &&
+      properties.listingType &&
+      properties.listingType.const === 'fractional'
+
+    const slotLength = enableFractional &&
+      this.state.formListing.formData.slotLength ?
+      this.state.formListing.formData.slotLength :
+        properties &&
+        properties.slotLength &&
+        properties.slotLength.default
+
+    const slotLengthUnit = enableFractional &&
+      this.state.formListing.formData.slotLengthUnit ?
+      this.state.formListing.formData.slotLengthUnit :
+        properties &&
+        properties.slotLengthUnit &&
+        properties.slotLengthUnit.default
+
+    const fractionalTimeIncrement = slotLengthUnit === 'schema.hours' ? 'hourly' : 'daily'
+
+    if (isFractionalListing) {
+      this.uiSchema.price = {
+        'ui:widget': 'hidden'
+      }
+    }
+
+    const translatedSchema = translateSchema(schemaJson)
+
+    this.setState({
+      schemaFetched: true,
+      fractionalTimeIncrement,
+      showNoSchemaSelectedError: false,
+      translatedSchema,
+      isFractionalListing,
+      formListing: {
+        formData: {
+          ...this.state.formListing.formData,
+          dappSchemaId: properties.dappSchemaId.const,
+          category: properties.category.const,
+          subCategory: properties.subCategory.const,
+          slotLength,
+          slotLengthUnit
+        }
+      }
+    })
   }
 
   goToDetailsStep() {
@@ -259,9 +362,22 @@ class ListingCreate extends Component {
     }
   }
 
-  onAvailabilityEntered(slots, step) {
+  onAvailabilityEntered(slots, direction) {
     if (!slots || !slots.length) {
       return
+    }
+
+    let nextStep
+    switch(direction) {
+      case 'forward':
+        this.state.isEditMode ?
+          nextStep = 'PREVIEW' :
+          nextStep = 'BOOST'
+        break
+
+      case 'back':
+        nextStep = 'DETAILS'
+        break
     }
 
     slots = prepareSlotsToSave(slots)
@@ -271,20 +387,18 @@ class ListingCreate extends Component {
         ...this.state.formListing,
         formData: {
           ...this.state.formListing.formData,
-          timeIncrement: this.state.fractionalTimeIncrement,
           slots
         }
-      }
-    })
-
-    this.setState({
-      step: this.STEP[step]
+      },
+      step: this.STEP[nextStep]
     })
   }
 
-  onBackToPickSchema() {
+  backFromDetailsStep() {
+    const step = this.props.mobileDevice ? this.STEP.PICK_SUBCATEGORY : this.STEP.PICK_CATEGORY
+
     this.setState({
-      step: this.STEP.PICK_SCHEMA,
+      step,
       selectedSchema: null,
       schemaFetched: false,
       formData: null
@@ -299,7 +413,9 @@ class ListingCreate extends Component {
   onDetailsEntered(formListing) {
     const [nextStep, listingType] = this.state.isFractionalListing ?
       [this.STEP.AVAILABILITY, 'fractional'] :
-      [this.STEP.BOOST, 'unit']
+      this.state.isEditMode ?
+        [this.STEP.PREVIEW, 'unit'] :
+        [this.STEP.BOOST, 'unit']
 
     formListing.formData.listingType = listingType
 
@@ -320,6 +436,7 @@ class ListingCreate extends Component {
   }
 
   onFormDataChange({ formData }) {
+
     this.setState({
       formListing: {
         ...this.state.formListing,
@@ -376,13 +493,14 @@ class ListingCreate extends Component {
   }
 
   async onSubmitListing(formListing) {
+    const { isEditMode } = this.state
+
     try {
       this.setState({ step: this.STEP.METAMASK })
       const listing = dappFormDataToOriginListing(formListing.formData)
-      const methodName = this.state.isEditMode ? 'updateListing' : 'createListing'
       let transactionReceipt
-      if (this.state.isEditMode) {
-        transactionReceipt = await origin.marketplace[methodName](
+      if (isEditMode) {
+        transactionReceipt = await origin.marketplace.updateListing(
           this.props.listingId,
           listing,
           0, // TODO(John) - figure out how a seller would add "additional deposit"
@@ -391,7 +509,7 @@ class ListingCreate extends Component {
           }
         )
       } else {
-        transactionReceipt = await origin.marketplace[methodName](
+        transactionReceipt = await origin.marketplace.createListing(
           listing,
           (confirmationCount, transactionReceipt) => {
             this.props.updateTransaction(confirmationCount, transactionReceipt)
@@ -399,9 +517,11 @@ class ListingCreate extends Component {
         )
       }
 
+      const transactionTypeKey = isEditMode ? 'updateListing' : 'createListing'
+
       this.props.upsertTransaction({
         ...transactionReceipt,
-        transactionTypeKey: 'createListing'
+        transactionTypeKey
       })
       this.props.getOgnBalance()
       this.setState({ step: this.STEP.SUCCESS })
@@ -422,13 +542,41 @@ class ListingCreate extends Component {
     this.setState({ step: this.STEP.PREVIEW })
   }
 
+  getStepNumber(stepNum) {
+    // We have a different number of steps in the workflow based on
+    // mobile vs. desktop and fractional vs. unit.
+    // This method ensures that the step numbers that display at the top of the view are correct
+    const isMobile = this.props.mobileDevice
+    const { isFractionalListing } = this.state
+
+    switch (stepNum) {
+      case 1:
+        return 1
+      case 2:
+      case 3:
+      case 4:
+        return isMobile ? stepNum : stepNum - 1
+      case 5:
+      case 6:
+          if (isMobile) {
+            return isFractionalListing ? stepNum : stepNum - 1
+          } else {
+            return isFractionalListing ? stepNum - 1 : stepNum - 2
+          }
+    }
+  }
+
   render() {
     const { wallet, intl } = this.props
     const {
       formListing,
+      fractionalTimeIncrement,
       selectedBoostAmount,
-      selectedSchemaType,
-      schemaExamples,
+      selectedCategory,
+      selectedCategoryName,
+      selectedCategorySchemas,
+      showNoCategorySelectedError,
+      selectedSchemaId,
       showNoSchemaSelectedError,
       step,
       translatedSchema,
@@ -438,20 +586,21 @@ class ListingCreate extends Component {
       isEditMode
     } = this.state
     const { formData } = formListing
-    const translatedCategory = translateListingCategory(formData.category)
     const usdListingPrice = getFiatPrice(formListing.formData.price, 'USD')
+    const category = translateListingCategory(formData.category)
+    const subCategory = translateListingCategory(formData.subCategory)
 
-    return (
+    return (!web3.currentProvider.isOrigin || origin.contractService.walletLinker) ? (
       <div className="listing-form">
         <div className="step-container">
           <div className="row">
-            {step === this.STEP.PICK_SCHEMA && (
+            {step === this.STEP.PICK_CATEGORY && (
               <div className="col-md-6 col-lg-5 pick-schema">
                 <label>
                   <FormattedMessage
                     id={'listing-create.stepNumberLabel'}
                     defaultMessage={'STEP {stepNumber}'}
-                    values={{ stepNumber: Number(step) }}
+                    values={{ stepNumber: this.getStepNumber(step) }}
                   />
                 </label>
                 <h2>
@@ -463,42 +612,46 @@ class ListingCreate extends Component {
                   />
                 </h2>
                 <div className="schema-options">
-                  {this.schemaList.map(schema => (
+                  {this.categoryList.map(category => (
                     <div
                       className={`schema-selection${
-                        selectedSchemaType === schema.type ? ' selected' : ''
+                        selectedCategory === category.type ? ' selected' : ''
                       }`}
-                      key={schema.type}
-                      onClick={() => this.handleSchemaSelection(schema.type)}
+                      key={category.type}
+                      onClick={() => this.handleCategorySelection(category.type)}
                       ga-category="create_listing"
-                      ga-label={ `select_schema_${schema.type}`}
+                      ga-label={ `select_category_${category.type}`}
                     >
-                      {schema.name}
-                      <div
-                        className={`schema-examples${
-                          selectedSchemaType === schema.type ? ' selected' : ''
-                        }`}
-                      >
-                        <p>
-                          <FormattedMessage
-                            id={'listing-create.listingsMayInclude'}
-                            defaultMessage={
-                              '{schemaName} listings may include:'
-                            }
-                            values={{ schemaName: schema.name }}
-                          />
-                        </p>
-                        <ul>
-                          {schemaExamples &&
-                            schemaExamples.map(example => (
-                              <li key={`${schema.name}-${example}`}>
-                                {example}
-                              </li>
-                            ))}
-                        </ul>
+                      <div className="category-icon-container">
+                        <img src={`images/${category.img}`} role="presentation" />
                       </div>
+                      {category.name}
+                      {!this.props.mobileDevice && selectedCategory === category.type &&
+                        <select
+                          onChange={this.handleSchemaSelection}
+                          value={selectedSchemaId || undefined}
+                          className="form-control"
+                        >
+                          <option value="">{intl.formatMessage(this.intlMessages.selectOne)}</option>
+                          {selectedCategorySchemas.map(schemaObj => (
+                            <option value={schemaObj.schema} key={schemaObj.name}>{schemaObj.name}</option>
+                          ))}
+                        </select>
+                      }
                     </div>
                   ))}
+                  {showNoCategorySelectedError && (
+                    <div className="info-box warn">
+                      <p>
+                        <FormattedMessage
+                          id={'listing-create.noSchemaSelectedError'}
+                          defaultMessage={
+                            'You must first select a listing type'
+                          }
+                        />
+                      </p>
+                    </div>
+                  )}
                   {showNoSchemaSelectedError && (
                     <div className="info-box warn">
                       <p>
@@ -512,19 +665,85 @@ class ListingCreate extends Component {
                     </div>
                   )}
                 </div>
-                <div className="btn-container">
-                  <button
-                    className="float-right btn btn-primary btn-listing-create"
-                    onClick={() => this.goToDetailsStep()}
-                    ga-category="create_listing"
-                    ga-label="select_schema_step_continue"
-                  >
-                    <FormattedMessage
-                      id={'listing-create.next'}
-                      defaultMessage={'Next'}
-                    />
-                  </button>
+                {!this.props.mobileDevice &&
+                  <div className="btn-container">
+                    <button
+                      className="float-right btn btn-primary btn-listing-create"
+                      onClick={() => this.handleCategorySelectNextBtn()}
+                      ga-category="create_listing"
+                      ga-label="select_category_step_continue"
+                    >
+                      <FormattedMessage
+                        id={'listing-create.next'}
+                        defaultMessage={'Next'}
+                      />
+                    </button>
+                  </div>
+                }
+              </div>
+            )}
+            {/* NOTE: PICK_SUBCATEGORY is a mobile-only step */}
+            {step === this.STEP.PICK_SUBCATEGORY && (
+              <div className="col-md-6 col-lg-5 pick-schema">
+                <label>
+                  <FormattedMessage
+                    id={'listing-create.stepNumberLabel'}
+                    defaultMessage={'STEP {stepNumber}'}
+                    values={{ stepNumber: this.getStepNumber(step) }}
+                  />
+                </label>
+                <h2>
+                  <FormattedMessage
+                    id={'listing-create.whatTypeOfListing'}
+                    defaultMessage={
+                      'What type of listing do you want to create?'
+                    }
+                  />
+                </h2>
+                <button
+                  onClick={() => this.setState({
+                    step: this.STEP.PICK_CATEGORY,
+                    selectedSchemaId: null
+                  })}
+                  className="mobile-back-btn"
+                >
+                  <img src="images/caret-grey.svg" />
+                  <FormattedMessage
+                    id={'listing-create.backButtonLabel'}
+                    defaultMessage={'Back'}
+                  />
+                </button>
+                <h3>{selectedCategoryName}</h3>
+                <div className="schema-options">
+                  {selectedCategorySchemas.map(schemaObj => (
+                    <div
+                      className={`schema-selection mobile${
+                        selectedSchemaId === schemaObj.schema ? ' selected' : ''
+                      }`}
+                      key={schemaObj.schema}
+                      onClick={() => this.handleSchemaSelection(schemaObj.schema)}
+                      ga-category="create_listing"
+                      ga-label={ `select_schema_${schemaObj.schema}`}
+                    >
+                      {schemaObj.name}
+                    </div>
+                  ))}
                 </div>
+                {selectedSchemaId &&
+                  <div className="btn-container mobile">
+                    <button
+                      className="float-right btn btn-primary btn-listing-create"
+                      onClick={() => this.goToDetailsStep()}
+                      ga-category="create_listing"
+                      ga-label="select_category_step_continue"
+                    >
+                      <FormattedMessage
+                        id={'listing-create.continue'}
+                        defaultMessage={'Continue'}
+                      />
+                    </button>
+                  </div>
+                }
               </div>
             )}
             {step === this.STEP.DETAILS && (
@@ -533,7 +752,7 @@ class ListingCreate extends Component {
                   <FormattedMessage
                     id={'listing-create.stepNumberLabel'}
                     defaultMessage={'STEP {stepNumber}'}
-                    values={{ stepNumber: Number(step) }}
+                    values={{ stepNumber: this.getStepNumber(step) }}
                   />
                 </label>
                 <h2>
@@ -569,7 +788,7 @@ class ListingCreate extends Component {
                       type="button"
                       className="btn btn-other btn-listing-create"
                       onClick={() =>
-                        this.onBackToPickSchema()
+                        this.backFromDetailsStep()
                       }
                       ga-category="create_listing"
                       ga-label="details_step_back"
@@ -599,10 +818,10 @@ class ListingCreate extends Component {
                 <Calendar
                   slots={ formData && formData.slots }
                   userType="seller"
-                  viewType={ this.state.fractionalTimeIncrement }
+                  viewType={ fractionalTimeIncrement }
                   step={ 60 }
-                  onComplete={ (slots) => this.onAvailabilityEntered(slots, 'BOOST') }
-                  onGoBack={ (slots) => this.onAvailabilityEntered(slots, 'DETAILS') }
+                  onComplete={ (slots) => this.onAvailabilityEntered(slots, 'forward') }
+                  onGoBack={ (slots) => this.onAvailabilityEntered(slots, 'back') }
                 />
               </div>
             }
@@ -612,7 +831,7 @@ class ListingCreate extends Component {
                   <FormattedMessage
                     id={'listing-create.stepNumberLabel'}
                     defaultMessage={'STEP {stepNumber}'}
-                    values={{ stepNumber: Number(step) }}
+                    values={{ stepNumber: this.getStepNumber(step) }}
                   />
                 </label>
                 <h2>
@@ -712,7 +931,7 @@ class ListingCreate extends Component {
                   <FormattedMessage
                     id={'listing-create.stepNumberLabel'}
                     defaultMessage={'STEP {stepNumber}'}
-                    values={{ stepNumber: Number(step) }}
+                    values={{ stepNumber: this.getStepNumber(step) }}
                   />
                 </label>
                 <h2>
@@ -745,7 +964,20 @@ class ListingCreate extends Component {
                       </p>
                     </div>
                     <div className="col-md-9">
-                      <p>{translatedCategory}</p>
+                      <p>{category}</p>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="col-md-3">
+                      <p className="label">
+                        <FormattedMessage
+                          id={'listing-create.subcategory'}
+                          defaultMessage={'Subcategory'}
+                        />
+                      </p>
+                    </div>
+                    <div className="col-md-9">
+                      <p>{subCategory}</p>
                     </div>
                   </div>
                   <div className="row">
@@ -836,37 +1068,39 @@ class ListingCreate extends Component {
                       </p>
                     </div>
                   </div>
-                  <div className="row">
-                    <div className="col-md-3">
-                      <p className="label">
-                        <FormattedMessage
-                          id={'listing-create.boost-level'}
-                          defaultMessage={'Boost Level'}
-                        />
-                      </p>
+                  {!isEditMode &&
+                    <div className="row">
+                      <div className="col-md-3">
+                        <p className="label">
+                          <FormattedMessage
+                            id={'listing-create.boost-level'}
+                            defaultMessage={'Boost Level'}
+                          />
+                        </p>
+                      </div>
+                      <div className="col-md-9">
+                        <p>
+                          <img
+                            className="ogn-icon"
+                            src="images/ogn-icon.svg"
+                            role="presentation"
+                          />
+                          <span className="text-bold">{formData.boostValue}</span>&nbsp;
+                          <Link
+                            className="ogn-abbrev"
+                            to="/about-tokens"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            OGN
+                          </Link>
+                          <span className="help-block">
+                            &nbsp;| {formData.boostLevel.toUpperCase()}
+                          </span>
+                        </p>
+                      </div>
                     </div>
-                    <div className="col-md-9">
-                      <p>
-                        <img
-                          className="ogn-icon"
-                          src="images/ogn-icon.svg"
-                          role="presentation"
-                        />
-                        <span className="text-bold">{formData.boostValue}</span>&nbsp;
-                        <Link
-                          className="ogn-abbrev"
-                          to="/about-tokens"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          OGN
-                        </Link>
-                        <span className="help-block">
-                          &nbsp;| {formData.boostLevel.toUpperCase()}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
+                  }
                 </div>
                 {/* Revisit this later
                   <Link
@@ -881,7 +1115,14 @@ class ListingCreate extends Component {
                 <div className="btn-container">
                   <button
                     className="btn btn-other float-left btn-listing-create"
-                    onClick={() => this.setState({ step: this.STEP.BOOST })}
+                    onClick={() => {
+                      const step = isEditMode ?
+                        isFractionalListing ?
+                          this.STEP.AVAILABILITY :
+                          this.STEP.DETAILS
+                        : this.STEP.BOOST
+                      this.setState({ step })
+                    }}
                     ga-category="create_listing"
                     ga-label="review_step_back"
                   >
@@ -911,12 +1152,12 @@ class ListingCreate extends Component {
                 }`}
               >
                 <WalletCard
-                  wallet={wallet}
+                  {...wallet}
                   withBalanceTooltip={!this.props.wallet.ognBalance}
                   withMenus={true}
                   withProfile={false}
                 />
-                {step === this.STEP.PICK_SCHEMA && (
+                {step === this.STEP.PICK_SUBCATEGORY && (
                   <div className="info-box">
                     <h2>
                       <FormattedMessage
@@ -943,7 +1184,7 @@ class ListingCreate extends Component {
                     <p>
                       <FormattedMessage
                         id={'listing-create.form-help-details'}
-                        defaultMessage={`Be sure to give your listing an appropriate title and description to let others know what you're offering. Adding some photos of your listing will help potential buyers decide if the want to buy your listing.`}
+                        defaultMessage={`Be sure to give your listing an appropriate title and description to let others know what you're offering. Adding some photos of your listing will help potential buyers decide if they want to buy your listing.`}
                       />
                     </p>
                   </div>
@@ -1003,7 +1244,7 @@ class ListingCreate extends Component {
                           'When you submit this listing, you will be asked to confirm your transaction in MetaMask. Buyers will then be able to see your listing and make offers on it.'
                         }
                       />
-                      {selectedBoostAmount && (
+                      {!!selectedBoostAmount && (
                         <div className="boost-reminder">
                           <FormattedMessage
                             id={'listing-create.whatHappensNextContent2'}
@@ -1147,23 +1388,25 @@ class ListingCreate extends Component {
           </div>
         </div>
         <Prompt
-          when={step !== this.STEP.PICK_SCHEMA && step !== this.STEP.SUCCESS}
+          when={step !== this.STEP.PICK_CATEGORY && step !== this.STEP.SUCCESS}
           message={intl.formatMessage(this.intlMessages.navigationWarning)}
         />
       </div>
-    )
+    ) : null
   }
 }
 
-const mapStateToProps = ({ app, exchangeRates, wallet }) => {
+const mapStateToProps = ({ activation, app, exchangeRates, wallet }) => {
   return {
     exchangeRates,
-    notificationsHardPermission: app.notificationsHardPermission,
-    notificationsSoftPermission: app.notificationsSoftPermission,
-    pushNotificationsSupported: app.pushNotificationsSupported,
-    serviceWorkerRegistration: app.serviceWorkerRegistration,
+    messagingEnabled: activation.messaging.enabled,
+    notificationsHardPermission: activation.notifications.permissions.hard,
+    notificationsSoftPermission: activation.notifications.permissions.soft,
+    pushNotificationsSupported: activation.notifications.pushEnabled,
+    serviceWorkerRegistration: activation.notifications.serviceWorkerRegistration,
     wallet,
-    web3Account: app.web3.account
+    web3Intent: app.web3.intent,
+    mobileDevice: app.mobileDevice
   }
 }
 
@@ -1173,10 +1416,15 @@ const mapDispatchToProps = dispatch => ({
   updateTransaction: (hash, confirmationCount) =>
     dispatch(updateTransaction(hash, confirmationCount)),
   upsertTransaction: transaction => dispatch(upsertTransaction(transaction)),
-  getOgnBalance: () => dispatch(getOgnBalance())
+  getOgnBalance: () => dispatch(getOgnBalance()),
+  storeWeb3Intent: intent => dispatch(storeWeb3Intent(intent))
 })
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(injectIntl(ListingCreate))
+export default withRouter(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps
+  )(
+    injectIntl(ListingCreate)
+  )
+)
