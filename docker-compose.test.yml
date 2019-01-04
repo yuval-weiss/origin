@@ -2,6 +2,7 @@ version: "3"
 
 services:
   origin-dapp:
+    command:
       # Overwrite the dapp start command from docker-compose.yml to append
       # --bail so that an error code is generated if the build fails
       >
