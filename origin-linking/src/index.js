@@ -12,10 +12,9 @@ expressWs(app)
 app.use(cookieParser())
 app.use(morgan('combined'))
 app.use(useragent.express())
-app.use(cors({ origin:true, credentials: true }))
+app.use(cors({ origin: true, credentials: true }))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
-
 
 import linkerRoutes from './linker-routes'
 

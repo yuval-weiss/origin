@@ -1,4 +1,4 @@
-'use strict';
+'use strict'
 
 module.exports = (sequelize, DataTypes) => {
   const LinkedToken = sequelize.define('LinkedToken', {
@@ -8,15 +8,15 @@ module.exports = (sequelize, DataTypes) => {
     codeExpires: DataTypes.DATE,
     currentDeviceContext: DataTypes.JSON,
     pendingCallContext: DataTypes.JSON,
-    clientPubKey:DataTypes.STRING(128),
+    clientPubKey: DataTypes.STRING(128),
     linked: DataTypes.BOOLEAN,
     appInfo: DataTypes.JSON,
     linkedAt: DataTypes.DATE
   }, {
-    tableName:'linked_token'
-  });
-  LinkedToken.associate = function(models) {
+    tableName: 'linked_token'
+  })
+  LinkedToken.associate = function() {
     // associations can be defined here
-  };
-  return LinkedToken;
-};
+  }
+  return LinkedToken
+}

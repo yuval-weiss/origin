@@ -1,5 +1,6 @@
-'use strict';
-const TableName = 'linked_token';
+'use strict'
+
+const TableName = 'linked_token'
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
@@ -12,7 +13,7 @@ module.exports = {
       },
       client_token: {
         type: Sequelize.STRING(255),
-        allowNull:false
+        allowNull: false
       },
       wallet_token: {
         type: Sequelize.STRING(255)
@@ -51,9 +52,9 @@ module.exports = {
       }
     }).then(() => queryInterface.addIndex(TableName, ['client_token']))
       .then(() => queryInterface.addIndex(TableName, ['wallet_token']))
-      .then(() => queryInterface.addIndex(TableName, ['code']));
+      .then(() => queryInterface.addIndex(TableName, ['code']))
   },
-  down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable(TableName);
+  down: (queryInterface) => {
+    return queryInterface.dropTable(TableName)
   }
-};
+}

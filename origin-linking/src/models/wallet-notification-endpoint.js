@@ -1,5 +1,6 @@
-'use strict';
-const {EthNotificationTypes} = require('origin/common/enums');
+'use strict'
+
+const { EthNotificationTypes } = require('origin/common/enums')
 
 module.exports = (sequelize, DataTypes) => {
   const WalletNotificationEndpoint = sequelize.define('WalletNotificationEndpoint', {
@@ -8,10 +9,10 @@ module.exports = (sequelize, DataTypes) => {
     deviceToken: DataTypes.STRING(255),
     deviceType: DataTypes.ENUM(EthNotificationTypes),
   }, {
-    tableName:'wallet_notification_endpoint'
-  });
-  WalletNotificationEndpoint.associate = function(models) {
+    tableName: 'wallet_notification_endpoint'
+  })
+  WalletNotificationEndpoint.associate = function() {
     // associations can be defined here
-  };
-  return WalletNotificationEndpoint;
-};
+  }
+  return WalletNotificationEndpoint
+}
