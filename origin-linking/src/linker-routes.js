@@ -1,6 +1,7 @@
 import express from 'express'
 import expressWs from 'express-ws'
 import Linker from './logic/linker'
+import logger from './logger'
 
 const router = express.Router()
 //doing this is a hack for detached routers...

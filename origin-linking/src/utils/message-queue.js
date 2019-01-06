@@ -1,5 +1,7 @@
 import _redis from 'redis'
 
+import logger from '../logger'
+
 const PUBSUB_PREFIX = 'ps.'
 
 // Create an expiring message queue

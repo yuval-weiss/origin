@@ -1,13 +1,15 @@
 'use strict'
 
-import db from './../models/'
 import uuidv4 from 'uuid/v4'
 import { Op } from 'sequelize'
 import { MessageTypes,EthNotificationTypes } from 'origin/common/enums'
 import MessageQueue from './../utils/message-queue'
-import origin, { providerUrl, web3 } from './../services/origin'
 import { sha3_224 } from 'js-sha3'
 import apn from 'apn'
+
+import db from '../models/'
+import logger from '../logger'
+import origin, { providerUrl, web3 } from '../services/origin'
 
 const MESSAGING_URL = process.env.MESSAGING_URL
 const SELLING_URL = process.env.SELLING_URL
@@ -65,12 +67,14 @@ class Linker {
   }
 
   async _generateNonConflictingCode() {
-    for (const i of Array(10)) {
+    let i = 0
+    while (i < 10) {
       const code = this._generateNewCode(CODE_SIZE)
       const existing = await this.findUnexpiredCode(code)
       if (existing.length == 0) {
         return code
       }
+      i++
     }
     throw('We hit max retries without finding a none repeated code!')
   }
