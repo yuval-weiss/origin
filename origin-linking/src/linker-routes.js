@@ -127,7 +127,7 @@ router.post('/prelink-wallet/:walletToken', async (req, res) => {
 
 router.post('/link-prelinked', async (req, res) => {
   const { clientToken, sessionToken, linked } = await linker.linkPrelinked(
-    code,
+    req.body.code,
     req.body.link_id,
     req.useragent,
     req.body.return_url

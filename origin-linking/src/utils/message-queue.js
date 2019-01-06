@@ -48,7 +48,7 @@ class MessageQueue {
       }
 
       multi_call.exec((err, replies) => {
-        logger.info("Multcall excuted...")
+        logger.info('Multcall excuted...')
         if (err) {
           reject(err)
         } else {
@@ -66,7 +66,7 @@ class MessageQueue {
         } else {
           resolve(
             result.reduceRight( (acc, a) => {
-              (!acc.length || acc[0].msg) ? acc.unshift({msgId:Number(a)}) : acc[0].msg = JSON.parse(a)
+              (!acc.length || acc[0].msg) ? acc.unshift({ msgId: Number(a) }) : acc[0].msg = JSON.parse(a)
               return acc
             }, [])
           )
@@ -84,7 +84,7 @@ class MessageQueue {
           if (result && result.length) {
             resolve(
               result.reduceRight( (acc, a) => {
-                (!acc.length || acc[0].msg) ? acc.unshift({msgId:Number(a)}) : acc[0].msg = JSON.parse(a)
+                (!acc.length || acc[0].msg) ? acc.unshift({ msgId: Number(a) }) : acc[0].msg = JSON.parse(a)
                 return acc
               }, [])[0] )
           } else {
@@ -112,12 +112,11 @@ class MessageQueue {
     events.subscribe(pubsubQueueKey)
 
     const messageHandler = (channel, msgId) => {
-        if(channel == pubsubQueueKey)
-        {
-          cb(msgId)
-        }
+      if(channel == pubsubQueueKey) {
+        cb(msgId)
       }
-    events.on("message", messageHandler)
+    }
+    events.on('message', messageHandler)
     return () => events.removeListener('message', messageHandler)
   }
 }
