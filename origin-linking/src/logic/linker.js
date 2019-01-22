@@ -281,13 +281,7 @@ class Linker {
   }
 
   getMessageFromMeta(meta, account) {
-<<<<<<< HEAD
     if (meta.subMeta) {
-=======
-    console.log("meta is:", meta)
-    if (meta.subMeta)
-    {
->>>>>>> master
       meta = meta.subMeta
     }
 
@@ -313,21 +307,18 @@ class Linker {
           return `${meta.method} pending for ${meta.listing.title}`
       }
     }
-    else
-    {
-      if (meta.contract && meta.method)
-      {
+    else {
+      if (meta.contract && meta.method) {
         return `Pending call to ${meta.contract}.${meta.method}`
       }
-      else
-      {
+      else {
         return `There is a pending call for your approval`
       }
     }
   }
 
   async callWallet(clientToken, sessionToken, account, callId, call, returnUrl) {
-    if (!clientToken || !sessionToken){
+    if (!clientToken || !sessionToken) {
       return false
     }
     const linkedObj = await this.findLink(clientToken)

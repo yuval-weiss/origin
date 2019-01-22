@@ -1,11 +1,12 @@
 'use strict'
 
+/*
 import app from '../src/index'
 import chai from 'chai'
 import request from 'supertest'
 import WebSocket from 'ws'
-
 const expect = chai.expect
+*/
 
 describe('API tests', () => {
   /*
