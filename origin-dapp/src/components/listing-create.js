@@ -25,7 +25,7 @@ import Modal from 'components/modal'
 import Calendar from './calendar'
 
 import { getListing } from 'utils/listing'
-import { prepareSlotsToSave } from 'utils/calendarHelpers'
+import { prepareSlotsToSave, generateDefaultPricing } from 'utils/calendarHelpers'
 import listingSchemaMetadata from 'utils/listingSchemaMetadata'
 import WalletCard from 'components/wallet-card'
 import { ProviderModal, ProcessingModal } from 'components/modals/wait-modals'
@@ -182,7 +182,6 @@ class ListingCreate extends Component {
           selectedBoostAmount: listing.boostValue,
           isEditMode: true
         }
-        this.ensureUserIsSeller(listing.seller)
 
         if (listing.pictures.length) {
           const pictures = await getDataURIsFromImgURLs(listing.pictures)
@@ -345,6 +344,12 @@ class ListingCreate extends Component {
       price: {
         'ui:field': PriceField
       },
+      weekdayPricing: {
+        'ui:field': PriceField
+      },
+      weekendPricing: {
+        'ui:field': PriceField
+      },
       unitsTotal: {
         'ui:field': QuantityField
       },
@@ -439,10 +444,6 @@ class ListingCreate extends Component {
   }
 
   onAvailabilityEntered(slots, direction) {
-    if (!slots || !slots.length) {
-      return
-    }
-
     let nextStep
     switch(direction) {
       case 'forward':
@@ -456,7 +457,7 @@ class ListingCreate extends Component {
         break
     }
 
-    slots = prepareSlotsToSave(slots)
+    slots = (slots && slots.length && prepareSlotsToSave(slots)) || []
 
     this.setState({
       formListing: {
@@ -498,6 +499,10 @@ class ListingCreate extends Component {
       this.state.isEditMode ?
         [this.STEP.PREVIEW, 'unit'] :
         [this.STEP.BOOST, 'unit']
+
+    if (formListing.formData.weekdayPricing || formListing.formData.weekendPricing) {
+      formListing.formData.slots = generateDefaultPricing(formListing.formData)
+    }
 
     formListing.formData.listingType = listingType
     // multiUnit listings specify unitsTotal, others default to 1
@@ -548,7 +553,7 @@ class ListingCreate extends Component {
 
   onBoostLimitChange({ formData }) {
     const boostLimit = formData.boostLimit
-    if (boostLimit && boostLimit !== this.state.formListing.formData.boostLimit
+    if (boostLimit !== undefined && boostLimit !== this.state.formListing.formData.boostLimit
     ) {
       this.setState({
         formListing: {
@@ -748,12 +753,17 @@ class ListingCreate extends Component {
     const formData = formListing.formData
     const {
       unitsTotal,
-      unitsLockedInOffers
+      unitsPending,
+      unitsSold
     } = formData
 
-    const isMultiUnitListing = !!formData.unitsTotal && formData.unitsTotal > 1
-
     if (isEditMode) {
+      const unitsLockedInOffers = unitsPending + unitsSold
+      /* considers the case where a user would edit the quantity to 1 on a multi unit listing
+       * that already has offers for more than 1 unit.
+       */
+      const isMultiUnitListing = (!!formData.unitsTotal && formData.unitsTotal) > 1 || unitsLockedInOffers > 1
+
       // do not allow quantity to be edited below the value of units already in offers
       if (isMultiUnitListing && unitsTotal < unitsLockedInOffers) {
         errors.unitsTotal.addError(
@@ -799,7 +809,6 @@ class ListingCreate extends Component {
       wallet,
       intl
     } = this.props
-    const totalNumberOfSteps = 4
     const {
       boostCapTooLow,
       formListing,
@@ -819,6 +828,7 @@ class ListingCreate extends Component {
       isFractionalListing,
       isEditMode
     } = this.state
+    const totalNumberOfSteps = isFractionalListing ? 5 : 4
     const { formData } = formListing
     const usdListingPrice = getFiatPrice(formListing.formData.price, 'USD')
     const boostAmount = formData.boostValue || selectedBoostAmount
@@ -1072,16 +1082,37 @@ class ListingCreate extends Component {
               </div>
             )}
             {step === this.STEP.AVAILABILITY &&
-              <div className="col-md-12 listing-availability">
-                <Calendar
-                  slots={ formData && formData.slots }
-                  userType="seller"
-                  viewType={ fractionalTimeIncrement }
-                  step={ 60 }
-                  onComplete={ (slots) => this.onAvailabilityEntered(slots, 'forward') }
-                  onGoBack={ (slots) => this.onAvailabilityEntered(slots, 'back') }
-                />
-              </div>
+              <Fragment>
+                <div className="col-md-6 col-lg-5">
+                  <label>
+                    <FormattedMessage
+                      id={'listing-create.stepNumberLabel'}
+                      defaultMessage={'STEP {stepNumber}'}
+                      values={{ stepNumber: this.getStepNumber(step) }}
+                    />
+                  </label>
+                  <h2>
+                    <FormattedMessage
+                      id={'listing-create.availabilityHeading'}
+                      defaultMessage={'Add Availability and Pricing'}
+                    />
+                  </h2>
+                  <StepsProgress
+                    stepsTotal={totalNumberOfSteps}
+                    stepCurrent={stepNumber}
+                  />
+                </div>
+                <div className="col-md-12 listing-availability">
+                  <Calendar
+                    slots={ formData && formData.slots }
+                    userType="seller"
+                    viewType={ fractionalTimeIncrement }
+                    step={ 60 }
+                    onComplete={ (slots) => this.onAvailabilityEntered(slots, 'forward') }
+                    onGoBack={ (slots) => this.onAvailabilityEntered(slots, 'back') }
+                  />
+                </div>
+              </Fragment>
             }
             {step === this.STEP.BOOST && (
               <div className="col-md-6 col-lg-5 select-boost">

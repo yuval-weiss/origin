@@ -3,16 +3,18 @@ import validator from 'origin-validator'
 import txHelper, { checkMetaMask } from '../_txHelper'
 import contracts from '../../contracts'
 import parseId from '../../utils/parseId'
+import { validateNewOffer } from './_validation'
 const ZeroAddress = '0x0000000000000000000000000000000000000000'
 
 async function makeOffer(_, data) {
   await checkMetaMask(data.from)
 
+  const { listingId } = parseId(data.listingID)
   const ipfsData = {
     schemaId: 'https://schema.originprotocol.com/offer_1.0.0.json',
-    listingId: data.listingID,
+    listingId,
     listingType: 'unit',
-    unitsPurchased: 1,
+    unitsPurchased: Number.parseInt(data.quantity),
     totalPrice: {
       amount: data.value,
       currency: 'ETH'
@@ -30,33 +32,40 @@ async function makeOffer(_, data) {
   const buyer = data.from
   const marketplace = contracts.marketplaceExec
 
-  const affilaiteWhitelistDisabled = await marketplace.methods
+  const affiliateWhitelistDisabled = await marketplace.methods
     .allowedAffiliates(marketplace.options.address)
     .call()
 
-  if (!affilaiteWhitelistDisabled) {
-    const affilaiteAllowed = await marketplace.methods
-      .allowedAffiliates(data.affiliate)
+  const affiliate = data.affiliate || contracts.config.affiliate || ZeroAddress
+  if (!affiliateWhitelistDisabled) {
+    const affiliateAllowed = await marketplace.methods
+      .allowedAffiliates(affiliate)
       .call()
 
-    if (!affilaiteAllowed) {
+    if (!affiliateAllowed) {
       throw new Error('Affiliate not on whitelist')
     }
   }
 
+  await validateNewOffer(listingId, data)
+
   const ipfsHash = await post(contracts.ipfsRPC, ipfsData)
-  const commission = contracts.web3.utils.toWei(ipfsData.commission.amount, 'ether')
+  const commission = contracts.web3.utils.toWei(
+    ipfsData.commission.amount,
+    'ether'
+  )
   const value = contracts.web3.utils.toWei(data.value, 'ether')
+  const arbitrator = data.arbitrator || contracts.config.arbitrator
 
   const args = [
-    data.listingID,
+    listingId,
     ipfsHash,
     ipfsData.finalizes,
-    data.affiliate || ZeroAddress,
+    affiliate,
     commission,
     value,
     data.currency || ZeroAddress,
-    data.arbitrator || ZeroAddress
+    arbitrator
   ]
   if (data.withdraw) {
     const { offerId } = parseId(data.withdraw)
@@ -68,38 +77,7 @@ async function makeOffer(_, data) {
     from: buyer,
     value
   })
-  return txHelper({ tx, mutation: 'makeOffer' })
+  return txHelper({ tx, from: data.from, mutation: 'makeOffer' })
 }
 
 export default makeOffer
-
-/*
-mutation makeOffer(
-  $listingID: String,
-  $finalizes: String,
-  $affiliate: String,
-  $commission: String,
-  $value: String,
-  $currency: String,
-  $arbitrator: String
-) {
-  makeOffer(
-    listingID: $listingID,
-    finalizes: $finalizes,
-    affiliate: $affiliate,
-    commission: $commission,
-    value: $value,
-    currency: $currency,
-    arbitrator: $arbitrator
-  )
-}
-{
-  "listingID": "0",
-  "finalizes": "1536300000",
-  "affiliate": "0x7c38A2934323aAa8dAda876Cfc147C8af40F8D0e",
-  "commission": "0",
-  "value": "100000000000000000",
-  "currency": "0x0000000000000000000000000000000000000000",
-  "arbitrator": "0x7c38A2934323aAa8dAda876Cfc147C8af40F8D0e"
-}
-*/

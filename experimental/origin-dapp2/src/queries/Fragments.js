@@ -31,6 +31,7 @@ export default {
           id
         }
         deposit
+        depositAvailable
         createdEvent {
           timestamp
         }
@@ -42,6 +43,8 @@ export default {
         description
         currencyId
         unitsTotal
+        unitsAvailable
+        unitsSold
         featured
         hidden
         price {
@@ -92,9 +95,12 @@ export default {
       fragment basicTransactionFields on Transaction {
         id
         status
+        submittedAt
+        blockNumber
         receipt {
           id
           events {
+            id
             event
             returnValues {
               listingID

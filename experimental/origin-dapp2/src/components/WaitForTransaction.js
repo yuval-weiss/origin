@@ -3,11 +3,12 @@ import { Query } from 'react-apollo'
 import get from 'lodash/get'
 
 import Modal from 'components/Modal'
-import TransactionReceiptQuery from 'queries/TransactionReceipt'
+import query from 'queries/TransactionReceipt'
 
 class WaitForTransaction extends Component {
   render() {
-    if (this.props.hash === 'pending') {
+    const id = this.props.hash
+    if (id === 'pending') {
       return (
         <Modal>
           <div className="make-offer-modal">
@@ -20,12 +21,9 @@ class WaitForTransaction extends Component {
         </Modal>
       )
     }
+
     return (
-      <Query
-        query={TransactionReceiptQuery}
-        variables={{ id: this.props.hash }}
-        pollInterval={3000}
-      >
+      <Query query={query} variables={{ id }} pollInterval={3000}>
         {({ data, client }) => {
           const event = get(data, 'web3.transactionReceipt.events', []).find(
             e => e.event === this.props.event
@@ -45,7 +43,17 @@ class WaitForTransaction extends Component {
             content = this.props.children({ event, client })
           }
 
-          return <Modal>{content}</Modal>
+          return (
+            <Modal
+              shouldClose={this.props.onClose ? this.props.shouldClose : false}
+              onClose={() => {
+                if (this.props.onClose) {
+                  this.props.onClose()
+                }
+              }}
+              children={content}
+            />
+          )
         }}
       </Query>
     )

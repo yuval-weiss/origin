@@ -1,20 +1,21 @@
 import React, { Component, Fragment } from 'react'
 import BigCalendar from 'react-big-calendar'
-import { injectIntl } from 'react-intl'
-import moment from 'moment'
+import { FormattedMessage, injectIntl } from 'react-intl'
+import moment from 'moment-timezone'
 import uuid from 'uuid/v1'
 import { 
   generateCalendarSlots,
-  checkSlotsForExistingEvent,
-  doAllEventsRecur,
   renderHourlyPrices,
-  updateOriginalEvent,
   getSlotsForDateChange,
   getDateDropdownOptions,
   getRecurringEvents,
   getSlotsToReserve,
   getCleanEvents,
-  getDateAvailabilityAndPrice
+  getDateAvailabilityAndPrice,
+  generateSlotStartEnd,
+  isDateSelected,
+  highlightCalendarDrag,
+  doFancyDateSelectionBorders
 } from 'utils/calendarHelpers'
 
 class Calendar extends Component {
@@ -24,10 +25,11 @@ class Calendar extends Component {
 
     this.getViewType = this.getViewType.bind(this)
     this.onSelectSlot = this.onSelectSlot.bind(this)
-    this.onSelectEvent = this.onSelectEvent.bind(this)
+    this.createSellerEvent = this.createSellerEvent.bind(this)
+    this.handleBuyerSelection = this.handleBuyerSelection.bind(this)
+    this.selectEvent = this.selectEvent.bind(this)
     this.handlePriceChange = this.handlePriceChange.bind(this)
     this.saveEvent = this.saveEvent.bind(this)
-    this.deleteEvent = this.deleteEvent.bind(this)
     this.cancelEvent = this.cancelEvent.bind(this)
     this.onAvailabilityChange = this.onAvailabilityChange.bind(this)
     this.onDateDropdownChange = this.onDateDropdownChange.bind(this)
@@ -40,21 +42,22 @@ class Calendar extends Component {
     this.monthHeader = this.monthHeader.bind(this)
     this.prevPeriod = this.prevPeriod.bind(this)
     this.nextPeriod = this.nextPeriod.bind(this)
+    this.goToToday = this.goToToday.bind(this)
     this.slotPropGetter = this.slotPropGetter.bind(this)
-    this.eventComponent = this.eventComponent.bind(this)
     this.renderRecurringEvents = this.renderRecurringEvents.bind(this)
+
+    this.currentDate = new Date()
 
     this.state = {
       events: [],
-      selectedEvent: {
-        price: 0,
-        isAvailable: true,
-        isRecurringEvent: false
-      },
+      selectedEvent: null,
       buyerSelectedSlotData: null,
-      defaultDate: new Date(),
-      showSellerActionBtns: false,
-      hideRecurringEventCheckbox: false
+      calendarDate: this.currentDate,
+      showSellerActionBtns: true,
+      editAllEventsInSeries: true,
+      existingEventSelected: false,
+      clickedSlotInfo: null,
+      showPastDateSelectedError: false
     }
 
     this.localizer = BigCalendar.momentLocalizer(moment)
@@ -63,14 +66,15 @@ class Calendar extends Component {
   componentWillMount() {
     if (this.props.slots) {
       const events = generateCalendarSlots(this.props.slots).map((slot) =>  {
-        return { 
+        return {
           id: uuid(),
           start: moment(slot.startDate).toDate(),
           end: moment(slot.endDate).subtract(1, 'second').toDate(),
+          timeZone: slot.timeZone,
           price: slot.price && slot.price.amount && parseFloat(slot.price.amount),
           isAvailable: slot.isAvailable,
           slots: slot.slots,
-          isRecurringEvent: (slot.recurs === 'weekly')
+          isRecurringEvent: (slot.rrule === 'FREQ=WEEKLY;')
         }
       })
 
@@ -82,7 +86,8 @@ class Calendar extends Component {
 
   componentDidMount() {
     renderHourlyPrices(this.props.viewType, this.props.userType)
-    this.renderRecurringEvents(this.state.defaultDate)
+    this.renderRecurringEvents(this.state.calendarDate)
+    highlightCalendarDrag()
   }
 
   componentDidUpdate() {
@@ -93,97 +98,109 @@ class Calendar extends Component {
     return this.props.viewType === 'daily' ? 'month' : 'week'
   }
 
-  onSelectSlot(slotInfo) {
+  onSelectSlot(clickedSlotInfo) {
+    this.setState({ clickedSlotInfo })
+
     if (this.props.userType === 'seller') {
+
+      // Check if slot is in the past
+      const timePeriod = this.props.viewType === 'hourly' ? 'hour' : 'day'
+      if (moment(clickedSlotInfo.end).isBefore(moment().startOf(timePeriod))) {
+        return this.setState({
+          showPastDateSelectedError: true,
+          selectedEvent: null
+        })
+      }
+
       // remove last slot time for hourly calendars - not sure why React Big Calendar includes
       // the next slot after the last selected time slot - seems like a bug.
+      // Potential oppportunity for PR or issue creation in React Big Calendar
       if (this.props.viewType === 'hourly') {
-        slotInfo.slots && slotInfo.slots.length && slotInfo.slots.splice(-1)
+        clickedSlotInfo.slots && clickedSlotInfo.slots.length && clickedSlotInfo.slots.splice(-1)
       }
 
-      // if slot doesn't already contain an event, create an event
-      const existingEventInSlot = checkSlotsForExistingEvent(slotInfo, this.state.events)
-
-      if (!existingEventInSlot.length || doAllEventsRecur(existingEventInSlot)) {
-
-        const endDate = this.props.viewType === 'daily' ?
-          moment(slotInfo.end).add(1, 'day').subtract(1, 'second').toDate() :
-          slotInfo.end
-
-        const newEvent = {
-          ...slotInfo,
-          id: uuid(),
-          end: endDate,
-          allDay: false
-        }
-
-        this.setState({
-          events: [
-            ...this.state.events,
-            newEvent
-          ],
-          showOverlappingEventsErrorMsg: false
-        })
-
-        this.onSelectEvent(newEvent, true)
-
-      } else {
-        return this.setState({ showOverlappingEventsErrorMsg: true })
-      }
+      this.createSellerEvent(clickedSlotInfo)
     } else {
       // user is a buyer
-      const selectionData = []
-      let slotToTest = moment(slotInfo.start)
-      let hasUnavailableSlot = false
+      this.handleBuyerSelection(clickedSlotInfo)
+    } 
+  }
 
-      while (slotToTest.toDate() >= slotInfo.start && slotToTest.toDate() <= slotInfo.end) {
-        const slotAvailData = getDateAvailabilityAndPrice(slotToTest, this.state.events)
+  createSellerEvent(eventInfo) {
+    const endDate = this.props.viewType === 'daily' ?
+      moment(eventInfo.end).add(1, 'day').subtract(1, 'second').toDate() :
+      moment(eventInfo.end).subtract(1, 'second').toDate()
 
-        if(!slotAvailData.isAvailable || moment(slotInfo.end).isBefore(moment())){
-          hasUnavailableSlot = true
-        }
+    const newEvent = {
+      ...eventInfo,
+      end: endDate,
+      allDay: false
+    }
 
-        selectionData.push({
-          ...slotInfo,
-          price: slotAvailData.price,
-          isAvailable: slotAvailData.isAvailable
-        })
+    this.selectEvent(newEvent)
+  }
 
-        if (this.props.viewType === 'daily') {
-          slotToTest = slotToTest.add(1, 'days')
-        } else {
-          slotToTest = slotToTest.add(this.props.step || 60, 'minutes').add(1, 'second')
-        }
+  handleBuyerSelection(slotInfo) {
+    const selectionData = []
+    let slotToTest = moment(slotInfo.start)
+    let hasUnavailableSlot = false
+    let slotIndex = 0
+
+    while (slotToTest.toDate() >= slotInfo.start && slotToTest.toDate() <= slotInfo.end) {
+      const slotAvailData = getDateAvailabilityAndPrice(slotToTest, this.state.events)
+      const { price, isAvailable, isRecurringEvent, timeZone } = slotAvailData
+
+      if (!isAvailable || moment(slotInfo.end).isBefore(moment())){
+        hasUnavailableSlot = true
       }
 
-      if (hasUnavailableSlot) {
-        this.setState({
-          selectionUnavailable: true,
-          selectedEvent: {}
-        })
+      const slot = generateSlotStartEnd(slotInfo.start, this.props.viewType, slotIndex)
+
+      selectionData.push({
+        ...slot,
+        price,
+        isAvailable,
+        isRecurringEvent,
+        timeZone
+      })
+
+      slotIndex++
+
+      if (this.props.viewType === 'daily') {
+        slotToTest = slotToTest.add(1, 'days')
       } else {
-        const price = selectionData.reduce(
-          (totalPrice, nextPrice) => totalPrice + nextPrice.price, 0
-        )
-        const priceFormatted = `${Number(price).toLocaleString(undefined, {
-          minimumFractionDigits: 5,
-          maximumFractionDigits: 5
-        })}`
-
-        this.setState({
-          selectionUnavailable: false,
-          selectedEvent: {
-            start: slotInfo.start,
-            end: slotInfo.end,
-            price: priceFormatted
-          },
-          buyerSelectedSlotData: selectionData
-        })
+        slotToTest = slotToTest.add(this.props.step || 60, 'minutes').add(1, 'second')
       }
+    }
+
+    if (hasUnavailableSlot) {
+      this.setState({
+        selectionUnavailable: true,
+        selectedEvent: {}
+      })
+    } else {
+      const price = selectionData.reduce(
+        (totalPrice, nextPrice) => totalPrice + nextPrice.price, 0
+      )
+      const priceFormatted = `${Number(price).toLocaleString(undefined, {
+        minimumFractionDigits: 5,
+        maximumFractionDigits: 5
+      })}`
+
+      this.setState({
+        selectionUnavailable: false,
+        selectedEvent: {
+          start: slotInfo.start,
+          end: slotInfo.end,
+          timeZone: slotInfo.timeZone,
+          price: priceFormatted
+        },
+        buyerSelectedSlotData: selectionData
+      })
     }
   }
 
-  onSelectEvent(selectedEvent, shouldSaveEvent) {
+  async selectEvent(selectedEvent) {
     const event = {
       ...selectedEvent,
       price: selectedEvent.price || '',
@@ -193,27 +210,13 @@ class Calendar extends Component {
 
     const stateToSet = {
       selectedEvent: event,
-      showOverlappingEventsErrorMsg: false
+      showPastDateSelectedError: false,
+      editAllEventsInSeries: true,
+      isAvailable: true
     }
 
-    const existingEventInSlot = checkSlotsForExistingEvent(selectedEvent, this.state.events)
-    if (existingEventInSlot.length && existingEventInSlot.length > 1) {
-      if (!selectedEvent.isRecurringEvent) {
-        stateToSet.hideRecurringEventCheckbox = true
-      } else {
-        stateToSet.hideRecurringEventCheckbox = false
-      }
-    } else {
-      stateToSet.hideRecurringEventCheckbox = false
-    }
-
-    this.setState(stateToSet)
-
-    // needs strict check for bool true value b/c the event gets passed in as a second param 
-    // when this method gets called by the calendar prop
-    if (shouldSaveEvent === true) {
-      this.saveEvent(event)
-    }
+    await this.setState(stateToSet)
+    doFancyDateSelectionBorders()
   }
 
   handlePriceChange(event) {
@@ -227,63 +230,58 @@ class Calendar extends Component {
   }
 
   saveEvent(selectedEvent) {
-    const thisEvent = (selectedEvent && selectedEvent.id ? selectedEvent : false) || this.state.selectedEvent
-    const allOtherEvents = this.state.events.filter((event) => event.id !== thisEvent.id)
-    const stateToSet = {
-      events: [...allOtherEvents, thisEvent],
-      showSellerActionBtns: false
-    }
+    const thisEvent = (selectedEvent && selectedEvent.id) ? selectedEvent : this.state.selectedEvent
 
-    if (thisEvent.isClonedRecurringEvent) {
-      stateToSet.events = updateOriginalEvent(thisEvent, this.state.events)
-    }
+    const newEvents = []
+    let slotToTest = moment(thisEvent.start)
+    let slotIndex = 0
 
-    this.setState(stateToSet)
+    while (slotToTest.toDate() >= thisEvent.start && slotToTest.toDate() <= thisEvent.end) {
+      const slot = generateSlotStartEnd(thisEvent.start, this.props.viewType, slotIndex)
 
-    // wait for state to update, then render recurring events on monthly calendar if recurring events checkbox is checked
-    setTimeout(() => {
-      this.renderRecurringEvents(this.state.defaultDate)
-    })
-  }
+      newEvents.push({
+        ...slot,
+        id: uuid(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        allDay: false,
+        isAvailable: thisEvent.isAvailable,
+        price: thisEvent.price,
+        isRecurringEvent: false
+      })
 
-  deleteEvent() {
-    const confirmation = confirm('Are you sure you want to delete this event?')
-    const { selectedEvent, events } = this.state
+      slotIndex++
 
-    if (confirmation) {
-      let allOtherEvents
-
-      if (selectedEvent.isRecurringEvent) {
-        allOtherEvents = events.filter((event) => 
-          event.id !== selectedEvent.id &&
-          event.originalEventId !== selectedEvent.id &&
-          event.id !== selectedEvent.originalEventId
-        )
+      if (this.props.viewType === 'daily') {
+        slotToTest = slotToTest.add(1, 'days')
       } else {
-        allOtherEvents = events.filter((event) => event.id !== selectedEvent.id)
+        slotToTest = slotToTest.add(this.props.step || 60, 'minutes').add(1, 'second')
       }
-
-      this.setState({
-        events: [...allOtherEvents],
-        selectedEvent: {
-          price: 0,
-          isAvailable: true,
-          isRecurringEvent: false
-        },
-        showSellerActionBtns: false
-      })
-
-      setTimeout(() => {
-        this.renderRecurringEvents(this.state.defaultDate)
-      })
     }
+
+    const filteredEvents = this.state.events.filter(existingEvent => {
+      const matchingEvent = newEvents.find(newEvent => {
+        return newEvent.start.toString() === existingEvent.start.toString() &&
+          newEvent.end.toString() === existingEvent.end.toString()
+      })
+
+      return !matchingEvent
+    })
+
+    this.setState({
+      events: [
+        ...filteredEvents,
+        ...newEvents
+      ],
+      showSellerActionBtns: false
+    })
   }
 
   cancelEvent() {
     const unChangedEvent = this.state.events.filter((event) => event.id === this.state.selectedEvent.id)
     this.setState({
       selectedEvent: unChangedEvent[0],
-      showSellerActionBtns: false
+      editAllEventsInSeries: true,
+      isAvailable: true
     })
   }
 
@@ -300,18 +298,19 @@ class Calendar extends Component {
   onDateDropdownChange(event) {
     const whichDropdown = event.target.name
     const value = event.target.value
+    const selectedEvent = {
+      ...this.state.selectedEvent,
+      slots: getSlotsForDateChange(this.state.selectedEvent, whichDropdown, value, this.props.viewType),
+      [whichDropdown]: new Date(value)
+    }
 
-    this.setState({
-      selectedEvent: {
-        ...this.state.selectedEvent,
-        slots: getSlotsForDateChange(this.state.selectedEvent, whichDropdown, value, this.props.viewType),
-        [whichDropdown]: new Date(value)
-      }
-    })
+    this.setState({ selectedEvent })
 
-    setTimeout(() => {
-      this.saveEvent(this.state.selectedEvent)
-    })
+    if (this.props.userType === 'buyer') {
+      setTimeout(() => {
+        this.onSelectSlot(this.state.selectedEvent)
+      })
+    }
   }
 
   onIsRecurringEventChange(event) {
@@ -324,50 +323,20 @@ class Calendar extends Component {
     })
   }
 
-  eventComponent(data) {
-    const { event } = data
-    const { isAvailable, price, isRecurringEvent } = event
-    const stepAbbrev = this.props.step === 60 ? 'hr' : `${this.props.step} min.`
-    const perTimePeriod = this.props.viewType === 'hourly' ? ` /${stepAbbrev}` : ''
-    const availClass = isAvailable !== false ? 'available' : 'unavailable'
-    const recurringClass = isRecurringEvent ? 'recurring' : 'non-recurring'
+  dateCellWrapper(data) {
+    const { selectedEvent, buyerSelectedSlotData, events } = this.state
+    const { value } = data
+    const slotData = getDateAvailabilityAndPrice(value, events, this.props.offers)
+    const availability = slotData.isAvailable ? 'available' : 'unavailable'
+    const isSelected = isDateSelected(selectedEvent || buyerSelectedSlotData, value) ? ' selected' : ''
+    const isPastDate = moment(value).isBefore(moment().startOf('day')) ? ' past-date' : ' future-date'
 
     return (
-      <div className={ `calendar-event ${availClass} ${recurringClass}` }>
-        {isAvailable !== false &&
-          <span>{ price ? `${price} ETH${perTimePeriod}` : '0 ETH' }</span>
-        }
-        {isAvailable === false &&
-          <span>Unavailable</span>
+      <div className={`rbc-day-bg ${availability}${isSelected}${isPastDate}`}>
+        {slotData.isAvailable &&
+          <span className="slot-price">{slotData.price ? `${slotData.price} ETH` : `0 ETH`}</span>
         }
       </div>
-    )
-  }
-
-  dateCellWrapper(data) {
-    const { value } = data
-    const dateInfo = getDateAvailabilityAndPrice(value, this.state.events, this.props.offers)
-    const availability = dateInfo.isAvailable ? 'available' : 'unavailable'
-    const isPastDate = moment(value).isBefore(moment().startOf('day')) ? ' past-date' : ''
-    const selectedSlotsMatchingDate = 
-      this.state.buyerSelectedSlotData &&
-      this.state.buyerSelectedSlotData.filter((slot) => 
-        moment(value).isBetween(moment(slot.start).subtract(1, 'second'), moment(slot.end).add(1, 'second'))
-      )
-    const isSelected = (selectedSlotsMatchingDate && selectedSlotsMatchingDate.length) ? ' selected' : ''
-
-    return (
-      <Fragment>
-        {this.props.userType === 'buyer' ?
-          <div className={`rbc-day-bg ${availability}${isPastDate}${isSelected}`}>
-            {dateInfo.isAvailable &&
-              <span>{dateInfo.price ? `${dateInfo.price} ETH` : `0 ETH`}</span>
-            }
-          </div>
-          :
-          <div className="rbc-day-bg"></div>
-        }
-      </Fragment>
     )
   }
 
@@ -384,11 +353,21 @@ class Calendar extends Component {
         moment(date).isBetween(moment(slot.start).subtract(1, 'second'), moment(slot.end))
       )
     const isSelected = (selectedSlotsMatchingDate && selectedSlotsMatchingDate.length) ? ' selected' : ''
-    const price = slotData.price ? ` priceEth-${slotData.price}` : ''
-    return { className: `${isAvailable}${isSelected}${price}` }
+    const price = slotData.price ? ` priceEth-${slotData.price}` : ' priceEth-0'
+    const timePeriod = this.props.viewType === 'hourly' ? 'hour' : 'day'
+    const isPastDate = moment(date).isBefore(moment().startOf(timePeriod)) ? ' past-date' : ' future-date'
+    return { className: `${isAvailable}${isSelected}${isPastDate}${price}` }
   }
 
   saveData() {
+    const events = this.state.events
+
+    if (!events || !events.length) {
+      return this.setState({ showNoEventsEnteredErrorMessage: true })
+    } else {
+      this.setState({ showNoEventsEnteredErrorMessage: false })
+    }
+
     const cleanEvents = getCleanEvents(this.state.events)
     this.props.onComplete && this.props.onComplete(cleanEvents)
   }
@@ -411,28 +390,34 @@ class Calendar extends Component {
   }
 
   prevPeriod() {
-    const date = moment(this.state.defaultDate).subtract(1, this.getViewType()).toDate()
+    const date = moment(this.state.calendarDate).subtract(1, this.getViewType()).toDate()
 
     this.renderRecurringEvents(date)
 
     this.setState({
-      defaultDate: date
+      calendarDate: date
     })
   }
 
   nextPeriod() {
-    const date = moment(this.state.defaultDate).add(1, this.getViewType()).toDate()
+    const date = moment(this.state.calendarDate).add(1, this.getViewType()).toDate()
 
     this.renderRecurringEvents(date)
 
     this.setState({
-      defaultDate: date
+      calendarDate: date
     })
+  }
+
+  goToToday() {
+    const date = new Date()
+    this.setState({ calendarDate: date })
+    this.currentDate = date
   }
 
   renderRecurringEvents(date) {
     this.setState({
-      defaultDate: date,
+      calendarDate: date,
       events: getRecurringEvents(date, this.state.events, this.props.viewType)
     })
 
@@ -443,59 +428,151 @@ class Calendar extends Component {
 
   render() {
     const selectedEvent = this.state.selectedEvent
-    const { viewType, userType } = this.props
-    const { events } = this.state
+    const { viewType, userType, offers } = this.props
+    const {
+      events,
+      calendarDate,
+      showNoEventsEnteredErrorMessage,
+      selectionUnavailable,
+      showPastDateSelectedError
+    } = this.state
 
     return (
       <div>
         <div className="row">
           <div className={`col-md-8 
                            calendar-container
-                           ${userType === 'buyer' ? ' buyer-view' : ''}
+                           ${userType === 'buyer' ? ' buyer-view' : ' seller-view'}
                            ${viewType === 'daily' ? ' daily-view' : ' hourly-view'}`}>
             <div className="calendar-nav">
               <img onClick={this.prevPeriod} className="prev-period" src="/images/caret-dark.svg" />
+              {calendarDate !== this.currentDate &&
+                <span className="go-to-today-btn" onClick={this.goToToday}>
+                  <FormattedMessage
+                    id={'calendar.goToToday'}
+                    defaultMessage={
+                      'Go to today'
+                    }
+                  />
+                </span>
+              }
               <img onClick={this.nextPeriod} className="next-period" src="/images/caret-dark.svg" />
             </div>
             <BigCalendar
               components={{
-                event: this.eventComponent,
                 dateCellWrapper: this.dateCellWrapper,
                 month: {
                   header: this.monthHeader
                 }
               }}
               selectable={ true }
-              events={ (userType === 'seller' && this.state.events) || [] }
+              events={ [] }
               defaultView={ BigCalendar.Views[this.getViewType().toUpperCase()] }
-              onSelectEvent={ this.onSelectEvent }
               onSelectSlot={ this.onSelectSlot }
               step={ this.props.step || 60 }
               timeslots={ 1 }
-              date={ this.state.defaultDate }
+              date={ this.state.calendarDate }
               onNavigate={ this.renderRecurringEvents }
               slotPropGetter={ this.slotPropGetter }
-              scrollToTime={ moment(this.state.defaultDate).hour(8).toDate() }
+              scrollToTime={ moment(this.state.calendarDate).hour(8).toDate() }
               localizer={this.localizer}
             />
             {
               userType === 'seller' &&
               <div className="btn-container">
-                <button className="btn btn-other" onClick={this.goBack}>Back</button>
-                <button className="btn btn-primary" onClick={this.saveData}>Next</button>
+                {showNoEventsEnteredErrorMessage &&
+                  <div className="info-box warn">
+                    <p>
+                      <FormattedMessage
+                        id={'calendar.showNoEventsEnteredErrorMessage'}
+                        defaultMessage={
+                          'Please enter availability on the calendar'
+                        }
+                      />
+                    </p>
+                  </div>
+                }
+                <button className="btn btn-other" onClick={this.goBack}>
+                  <FormattedMessage
+                    id={'calendar.back'}
+                    defaultMessage={
+                      'Back'
+                    }
+                  />
+                </button>
+                <button className="btn btn-primary" onClick={this.saveData}>
+                  <FormattedMessage
+                    id={'calendar.next'}
+                    defaultMessage={
+                      'Next'
+                    }
+                  />
+                </button>
               </div>
             }
           </div>
-          <div className="col-md-4">
-            {this.state.showOverlappingEventsErrorMsg &&
-              <p className="calendar-error-msg">Only one recurring price and one non-recurring price can be set for each time slot.</p>
+          <div className="col-md-4 calendar-right-column">
+            {(!selectedEvent || !selectedEvent.start) && userType === 'seller' &&
+              <div className="info-box">
+                <p>
+                  <FormattedMessage
+                    id={'calendar.calendarTipsSeller1'}
+                    defaultMessage={
+                      'Click the calendar to enter pricing and availability information.'
+                    }
+                  />
+                </p>
+                <p>
+                  <FormattedMessage
+                    id={'calendar.calendarTipsSeller2'}
+                    defaultMessage={
+                      'To select multiple time slots, click the starting time slot and drag to the ending one.'
+                    }
+                  />
+                </p>
+              </div>
             }
-            {selectedEvent && selectedEvent.start && !this.state.showOverlappingEventsErrorMsg &&
+            {(!selectedEvent || !selectedEvent.start) && userType === 'buyer' &&
+              <div className="info-box">
+                <p>
+                  <FormattedMessage
+                    id={'calendar.calendarTipsBuyer1'}
+                    defaultMessage={
+                      'Click one or more available time slots to make an offer.'
+                    }
+                  />
+                </p>
+                <p>
+                  <FormattedMessage
+                    id={'calendar.calendarTipsBuyer2'}
+                    defaultMessage={
+                      'To select multiple time slots, click the starting time slot and drag to the ending one.'
+                    }
+                  />
+                </p>
+              </div>
+            }
+            {selectedEvent && selectedEvent.start &&
               <div className="calendar-cta">
-                {userType === 'seller' &&
-                  <span className="delete-btn" onClick={this.deleteEvent}>delete</span>
-                }
-                <p className="font-weight-bold">Selected { viewType === 'daily' ? 'dates' : 'times' }</p>
+                <p className="font-weight-bold">
+                  {viewType === 'daily' &&
+                    <FormattedMessage
+                      id={'calendar.selectedDates'}
+                      defaultMessage={
+                        'Selected dates'
+                      }
+                    />
+                  }
+                  {
+                    viewType !== 'daily' &&
+                    <FormattedMessage
+                      id={'calendar.selectedTimes'}
+                      defaultMessage={
+                        'Selected times'
+                      }
+                    />
+                  }
+                </p>
                 <div>
                   <div className="row">
                     <div className="col-md-6">
@@ -505,7 +582,14 @@ class Calendar extends Component {
                         onChange={ this.onDateDropdownChange }
                         value={ selectedEvent.start.toString() }>
                         { 
-                          getDateDropdownOptions(selectedEvent.start, viewType, selectedEvent, events).map((date) => (
+                          getDateDropdownOptions(
+                            selectedEvent.start,
+                            viewType,
+                            userType,
+                            selectedEvent,
+                            events,
+                            offers
+                          ).map((date) => (
                             ((viewType === 'daily' && date <= selectedEvent.end) ||
                             (viewType === 'hourly' && date < selectedEvent.end)) &&
                             <option
@@ -524,7 +608,14 @@ class Calendar extends Component {
                         onChange={ this.onDateDropdownChange }
                         value={selectedEvent.end.toString()}>
                         { 
-                          getDateDropdownOptions(selectedEvent.end, viewType, selectedEvent, events).map((date) => (
+                          getDateDropdownOptions(
+                            selectedEvent.end,
+                            viewType,
+                            userType,
+                            selectedEvent,
+                            events,
+                            offers
+                          ).map((date) => (
                             ((viewType === 'daily' && date >= selectedEvent.start) ||
                             (viewType === 'hourly' && date > selectedEvent.start)) &&
                             <option
@@ -540,24 +631,23 @@ class Calendar extends Component {
                 </div>
                 {userType === 'seller' &&
                   <Fragment>
-                    {!this.state.hideRecurringEventCheckbox &&
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="isRecurringEvent"
-                          checked={ selectedEvent.isRecurringEvent }
-                          onChange={ this.onIsRecurringEventChange } />
-                        <label className="form-check-label" htmlFor="isRecurringEvent">
-                          This is a repeating event
-                        </label>
-                      </div>
-                    }
                     <div>
-                      <p className="font-weight-bold">Availability</p>
+                      <p className="font-weight-bold">
+                        <FormattedMessage
+                          id={'calendar.available'}
+                          defaultMessage={
+                            'Available'
+                          }
+                        />
+                      </p>
                       <div>
                         <label htmlFor="available">
-                          Availaible
+                          <FormattedMessage
+                            id={'calendar.yes'}
+                            defaultMessage={
+                              'Yes'
+                            }
+                          />
                         </label>
                         <input 
                           type="radio"
@@ -569,7 +659,12 @@ class Calendar extends Component {
                       </div>
                       <div>
                         <label className="form-check-label" htmlFor="unavailable">
-                          Unavailable
+                          <FormattedMessage
+                            id={'calendar.no'}
+                            defaultMessage={
+                              'No'
+                            }
+                          />
                         </label>
                         <input
                           type="radio"
@@ -581,7 +676,14 @@ class Calendar extends Component {
                       </div>
                       {selectedEvent.isAvailable &&
                         <Fragment>
-                          <p className="font-weight-bold">Pricing</p>
+                          <p className="font-weight-bold">
+                            <FormattedMessage
+                              id={'calendar.pricing'}
+                              defaultMessage={
+                                'Pricing'
+                              }
+                            />
+                          </p>
                           <input 
                             placeholder="Price"
                             name="price"
@@ -594,11 +696,25 @@ class Calendar extends Component {
                             viewType === 'hourly' &&
                             this.props.step &&
                             <span className="price-label">
-                              &nbsp;ETH per hour
+                              &nbsp;ETH&nbsp;
+                              <FormattedMessage
+                                id={'calendar.perHour'}
+                                defaultMessage={
+                                  'per hour'
+                                }
+                              />
                             </span>
                           }
                           {viewType === 'daily' &&
-                            <span className="price-label">&nbsp;ETH</span>
+                            <span className="price-label">
+                              &nbsp;ETH&nbsp;
+                              <FormattedMessage
+                                id={'calendar.perDay'}
+                                defaultMessage={
+                                  'per day'
+                                }
+                              />
+                            </span>
                           }
                         </Fragment>
                       }
@@ -606,10 +722,24 @@ class Calendar extends Component {
                     {this.state.showSellerActionBtns &&
                       <div className="cta-btns row">
                         <div className="col-md-6">
-                          <button className="btn btn-dark" onClick={this.cancelEvent}>Cancel</button>
+                          <button className="btn" onClick={this.cancelEvent}>
+                            <FormattedMessage
+                              id={'calendar.cancel'}
+                              defaultMessage={
+                                'Cancel'
+                              }
+                            />
+                          </button>
                         </div>
                         <div className="col-md-6">
-                          <button className="btn btn-light" onClick={this.saveEvent}>Save</button>
+                          <button className="btn" onClick={this.saveEvent}>
+                            <FormattedMessage
+                              id={'calendar.save'}
+                              defaultMessage={
+                                'Save'
+                              }
+                            />
+                          </button>
                         </div>
                       </div>
                     }
@@ -617,24 +747,66 @@ class Calendar extends Component {
                 }
                 {userType === 'buyer' &&
                   <div>
-                    <p className="font-weight-bold">Price</p>
+                    <p className="font-weight-bold">
+                      <FormattedMessage
+                        id={'calendar.price'}
+                        defaultMessage={
+                          'Price'
+                        }
+                      />
+                    </p>
                     <p>{selectedEvent.price && selectedEvent.price} ETH</p>
-                    <div className="cta-btns row">
-                      <div className="col-md-6">
-                        <button className="btn btn-dark" onClick={this.unselectSlots}>Cancel</button>
+                    {!this.props.userIsSeller &&
+                      <div className="cta-btns row">
+                        <div className="col-md-6">
+                          <button className="btn btn-dark" onClick={this.unselectSlots}>
+                            <FormattedMessage
+                              id={'calendar.cancel'}
+                              defaultMessage={
+                                'Cancel'
+                              }
+                            />
+                          </button>
+                        </div>
+                        <div className="col-md-6">
+                          <button className="btn btn-light" onClick={this.reserveSlots}>
+                            <FormattedMessage
+                              id={'calendar.reserve'}
+                              defaultMessage={
+                                'Reserve'
+                              }
+                            />
+                          </button>
+                        </div>
                       </div>
-                      <div className="col-md-6">
-                        <button className="btn btn-light" onClick={this.reserveSlots}>Reserve</button>
-                      </div>
-                    </div>
+                    }
                   </div>
                 }
               </div>
             }
-            {this.state.selectionUnavailable &&
-              <p className="selection-unavailable font-weight-bold">
-                Your selection contains one or more unavailable time slots.
-              </p>
+            {selectionUnavailable &&
+              <div className="info-box warn">
+                <p>
+                  <FormattedMessage
+                    id={'calendar.selectionUnavailable'}
+                    defaultMessage={
+                      'Your selection contains one or more unavailable time slots.'
+                    }
+                  />
+                </p>
+              </div>
+            }
+            {showPastDateSelectedError &&
+              <div className="info-box warn">
+                <p>
+                  <FormattedMessage
+                    id={'calendar.showPastDateSelectedError'}
+                    defaultMessage={
+                      'Past dates may not be selected.'
+                    }
+                  />
+                </p>
+              </div>
             }
           </div>
         </div>
