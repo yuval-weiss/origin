@@ -58,6 +58,29 @@ export function getDnsRecord(subdomain, recordType) {
   })
 }
 
+/* Retrieve all DNS records matching a regex pattern and optional record type.
+ *
+ * @param {string} regexPattern
+ * @param {string} recordType the DNS record type.
+ */
+export function getDnsRecords(regexPattern, recordType = undefined) {
+  return new Promise((resolve, reject) => {
+    let records = []
+
+    zone.getRecordsStream()
+      .on('error', reject)
+      .on('data', record => {
+        if (recordType && record.type !== recordType) {
+          return
+        }
+        records.push(record)
+      })
+      .on('end', () => {
+        resolve(records)
+      })
+  })
+}
+
 /* Helper method returning both the CNAME and TXT record for Google Cloud DNS.
  *
  * @param {string} subdomain The subdomain of the DNS records.

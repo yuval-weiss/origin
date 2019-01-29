@@ -1,5 +1,3 @@
-require('@babel/polyfill')
-
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const express = require('express')
@@ -8,7 +6,7 @@ const Raven = require('raven')
 const app = express()
 const port = process.env.PORT || 4321
 
-import { setAllRecords, updateTxtRecord } from './lib/dns'
+import { getDnsRecords, setAllRecords, updateTxtRecord } from './lib/dns'
 import { addConfigToIpfs, ipfsClient } from './lib/ipfs'
 import { validateSubdomain, validateSignature } from './middleware'
 import logger from './logger'
@@ -86,6 +84,15 @@ app.post('/config/preview', async (req, res) => {
   ipfsClient.pin.rm(ipfsHash)
 
   res.send(ipfsHash)
+})
+
+app.get('/marketplaces', async (req, res) => {
+  const results = await getDnsRecords(/^([^.]+\.[^.]+\.[^.]+)$/g, 'CNAME')
+  let marketplaces = []
+  results.map((record) => {
+    marketplaces.push(record.name)
+  })
+  return res.send(marketplaces)
 })
 
 app.post('/validate/subdomain', validateSubdomain)
