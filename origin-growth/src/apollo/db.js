@@ -23,7 +23,6 @@ function _makeCampaign(row) {
     distributionDate: row.distributionDate,
     status: status,
     actions: [], // TODO implement 
-    rewardEarned: { currency: 'OGN', amount: 0 } // TODO implement
   }
 }
 
