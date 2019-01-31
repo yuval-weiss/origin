@@ -1,16 +1,18 @@
+const WALLET_LINKER_DATA = 'walletLinkerData'
+
 class MobileLinker {
   constructor({ httpUrl, wsUrl }) {
     this.httpUrl = httpUrl
     this.portUrl = wsUrl
-    console.log(httpUrl, wsUrl)
+    this.sessionToken = null
+    this.accounts = []
   }
 
   async link() {
-    const code = await this.generateLinkCode()
-    console.log(code)
-    return code
+    return await this.generateLinkCode()
   }
 
+  // Grabs link code, which is used to generate QR codes.
   async generateLinkCode() {
     console.log('generateLinkCode called')
     const resp = await this.post('/api/wallet-linker/generate-code', {
@@ -20,14 +22,43 @@ class MobileLinker {
       pub_key: null, // TODO; fill this in
       notify_wallet: this.notifyWallet
     })
+    console.log('got link code response:', resp)
     this.linkCode = resp.link_code
     this.linked = resp.linked
     if (this.sessionToken !== resp.sessionToken) {
-      this.sessionToken = resp.sessionToken
-      // TODO; start message sync
+      this.sessionToken = resp.session_token
+      // TODO: start message sync
     }
-    // TODO: sync session storage
+    this.saveSessionStorage()
     return resp.link_code
+  }
+
+  saveSessionStorage() {
+    // TODO: should we really sync the linker server URL here?
+    const walletData = {
+      accounts: this.generateLinkCode.accounts,
+      linked: this.linked, // TODO: implement
+      lastMessageId: this.lastMessageId, // TODO: implement
+      sessionToken: this.sessionToken
+    }
+    console.log('saving session storage:', walletData)
+    sessionStorage.setItem(WALLET_LINKER_DATA, JSON.stringify(walletData))
+  }
+
+  loadSessionStorage() {
+    const walletDataStr = sessionStorage.getItem(WALLET_LINKER_DATA)
+    let walletData
+    try {
+      walletData = JSON.parse(walletDataStr)
+    } catch(err) {
+      console.error('error parsing session wallet data:', err)
+      throw err
+    }
+
+    this.accounts = walletData.accounts
+    this.sessionToken = walletData.sessionToken
+    this.lastMessageId = walletData.lastMessageId
+    this.linked = walletData.linked
   }
 
   getReturnUrl() {
