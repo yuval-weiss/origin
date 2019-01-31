@@ -44,6 +44,8 @@ import verifyTwitter from './attestations/verifyTwitter'
 import generateAirbnbCode from './attestations/generateAirbnbCode'
 import verifyAirbnbCode from './attestations/verifyAirbnbCode'
 
+import createLinkCode from './linker/createLinkCode'
+
 export default {
   addAffiliate,
   acceptOffer,
@@ -85,5 +87,6 @@ export default {
   verifyTwitter,
   generateAirbnbCode,
   verifyAirbnbCode,
+  createLinkCode,
   refetch: () => true
 }

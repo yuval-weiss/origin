@@ -20,6 +20,11 @@ if (typeof window !== 'undefined') {
   OriginMessaging = require('origin-messaging-client').default
 }
 
+let OriginLinkerClient
+if (typeof window !== 'undefined') {
+  OriginLinkerClient = require('origin-linker-client').default
+}
+
 const Configs = {
   mainnet: {
     provider: 'https://mainnet.infura.io/v3/98df57f0748e455e871c48b96f2095b2',
@@ -103,7 +108,9 @@ const Configs = {
     bridge: 'https://bridge.staging.originprotocol.com',
     automine: 2000,
     affiliate: '0x0d1d4e623D10F9FBA5Db95830F7d3839406C6AF2',
-    arbitrator: '0x821aEa9a577a9b44299B9c15c88cf3087F3b5544'
+    arbitrator: '0x821aEa9a577a9b44299B9c15c88cf3087F3b5544',
+    linker: `http://${HOST}:3008`,
+    linkerWS: `ws://${HOST}:3008`
 
     // messaging: {
     //   ipfsSwarm:
@@ -187,6 +194,11 @@ export function setNetwork(net, customConfig) {
     const MessagingConfig = config.messaging || DefaultMessagingConfig
     MessagingConfig.personalSign = metaMask && metaMaskEnabled ? true : false
     context.messaging = OriginMessaging({ ...MessagingConfig, web3 })
+
+    context.linker = OriginLinkerClient({
+      httpUrl: config.linker,
+      wsUrl: config.linkerWS
+    })
   }
 
   context.metaMaskEnabled = metaMaskEnabled

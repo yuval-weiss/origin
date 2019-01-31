@@ -303,6 +303,12 @@ export const AddDataMutation = gql`
   }
 `
 
+export const CreateLinkCodeMutation = gql`
+  mutation CreateLinkCode {
+    createLinkCode: String
+  }
+`
+
 // await originJS.createListing({
 //   deposit: '2',
 //   arbitrator: '0x9d42726D0Aa33984c55a1076DBc68a42f2509684',

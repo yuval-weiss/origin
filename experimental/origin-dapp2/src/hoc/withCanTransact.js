@@ -15,6 +15,8 @@ function withCanTransact(WrappedComponent) {
           if (loading) {
             return <WrappedComponent {...props} cannotTransact="loading" />
           }
+          // TODO: remove this
+          return <WrappedComponent {...props} />
           if (!get(data, 'web3.metaMaskAccount.id')) {
             return <WrappedComponent {...props} cannotTransact="no-wallet" />
           }

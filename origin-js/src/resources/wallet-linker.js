@@ -70,17 +70,21 @@ export default class WalletLinker {
   }
 
   async startLink() {
+    console.log('startLink called')
     const code = await this.generateLinkCode()
+    console.log('code:', code)
     this.setLinkCode(code)
     this.showPopUp(true)
   }
 
   cancelLink() {
+    console.log('cancelLink called')
     this.pending_call = undefined
     this.showPopUp(false)
   }
 
   loadSessionStorage() {
+    console.log('loadSessionStorage')
     const wallet_data_str = sessionStorage.getItem('walletLinkerData')
     let wallet_data = undefined
     try {
@@ -99,6 +103,7 @@ export default class WalletLinker {
   }
 
   syncSessionStorage() {
+    console.log('syncSessionStorage')
     const wallet_data = {
       accounts: this.accounts,
       networkRpcUrl: this.networkRpcUrl,
@@ -110,6 +115,7 @@ export default class WalletLinker {
   }
 
   getProvider() {
+    console.log('getProvider called')
     const provider = ZeroClientProvider({
       rpcUrl:
         this.networkRpcUrl && this.linked
@@ -137,6 +143,7 @@ export default class WalletLinker {
   }
 
   getAccounts(callback) {
+    console.log('getAccounts')
     if (callback) {
       callback(undefined, this.accounts)
     } else {
@@ -147,6 +154,7 @@ export default class WalletLinker {
   }
 
   signTransaction(txn_object, callback) {
+    console.log('signTransaction')
     const call_id = uuidv1()
     //txn_object['chainId'] = this.web3.utils.toHex(this.netId)
     txn_object['gasLimit'] = txn_object['gas']
@@ -173,10 +181,12 @@ export default class WalletLinker {
   }
 
   createCall(method, params) {
+    console.log('createCall')
     return { method, net_id: this.netId, params }
   }
 
   customSignMessage(params, call_id) {
+    console.log('customSignMessage called')
     const call = this.createCall('signMessage', params)
     if (!this.linked) {
       this.pending_call = {
@@ -195,7 +205,7 @@ export default class WalletLinker {
   }
 
   processTransaction(txn_object, callback) {
-    console.log('processTransaction:', txn_object, callback)
+    console.log('processTransaction called')
     const call_id = uuidv1()
     //translate gas to gasLimit
     txn_object['gasLimit'] = txn_object['gas']
@@ -233,6 +243,7 @@ export default class WalletLinker {
   }
 
   async changeNetwork(networkRpcUrl, force = false) {
+    console.log('changeNetwork')
     if (this.networkRpcUrl != networkRpcUrl || force) {
       this.networkRpcUrl = networkRpcUrl
       this.networkChangeCb()
@@ -241,6 +252,7 @@ export default class WalletLinker {
   }
 
   processMessage(m) {
+    console.log('processMessage')
     const type = m.msg.type
     const message = m.msg.data
     const msgId = m.msgId
@@ -314,18 +326,20 @@ export default class WalletLinker {
   }
 
   startMessagesSync() {
+    console.log('startMessagesSync')
    /*
     if (!this.interval) {
       //5 second intervals for now
       this.interval = setInterval(this.syncLinkMessages.bind(this), 5 * 1000)
     }
     */
-    
+
     this.syncLinkMessages()
-    
+
   }
 
   getReturnUrl() {
+    console.log('getReturnUrl')
     if (
       typeof window.orientation !== 'undefined' ||
       navigator.userAgent.indexOf('IEMobile') !== -1
@@ -337,6 +351,7 @@ export default class WalletLinker {
   }
 
   initSession() {
+    console.log('initSession', this.linked, this.networkRpcUrl)
     if (this.linked && this.networkRpcUrl) {
       this.changeNetwork(this.networkRpcUrl, true)
     } else {
@@ -347,6 +362,7 @@ export default class WalletLinker {
   }
 
   getLinkPrivKey() {
+    console.log('getLinkPrivKey')
     const localKey = localStorage.getItem(LOCAL_KEY_STORE)
     const privKey = localKey || cryptoRandomString(64).toString('hex')
     if (privKey != localKey)
@@ -357,6 +373,7 @@ export default class WalletLinker {
   }
 
   getLinkPubKey() {
+    console.log('getLinkPubKey')
     return secp256k1
       .publicKeyCreate(new Buffer(this.getLinkPrivKey(), 'hex'), false)
       .slice(1)
@@ -375,6 +392,7 @@ export default class WalletLinker {
 
 
   async generateLinkCode() {
+    console.log('generateLinkCode')
     const ret = await this.post('generate-code', {
       session_token: this.session_token,
       return_url: this.getReturnUrl(),
@@ -396,6 +414,7 @@ export default class WalletLinker {
   }
 
   getLinkCode() {
+    console.log('getLinkCode')
     return this.link_code
   }
 
@@ -407,6 +426,7 @@ export default class WalletLinker {
   }
 
   async syncLinkMessages() {
+    console.log('syncLinkMessages')
     this.closeLinkMessages()
     const wsUrl = appendSlash(this.serverUrl.replace(/^http/, 'ws'))
     const ws = new WebSocket(wsUrl + 'linked-messages/' + (this.session_token || '-') + '/' +  (this.last_message_id || 0))
@@ -453,6 +473,7 @@ export default class WalletLinker {
   }
 
   async post(url, body) {
+    console.log('post', url)
     try {
       return await this.http(this.serverUrl, url, body, 'POST')
     } catch (error) {
@@ -462,6 +483,7 @@ export default class WalletLinker {
   }
 
   async get(url) {
+    console.log('get', url)
     return this.http(this.serverUrl, url, undefined, 'GET')
   }
 }
