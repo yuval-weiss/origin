@@ -14,25 +14,67 @@ import withCanTransact from 'hoc/withCanTransact'
 import withWallet from 'hoc/withWallet'
 import withWeb3 from 'hoc/withWeb3'
 
+class MobileLinkerQRCode extends Component {
+  render() {
+    const { code } = this.props
+    const walletLandingUrl = 'https://www.originprotocol.com:5000/mobile'
+    const role = 'buyer'
+    const web3Intent = 'buy'
+
+    if (!code) return <></>
+
+    // TODO: add close button
+    // TODO: tweak style?
+    return (
+      <Modal>
+        <div style={{ marginBottom: '20px' }}>
+          To {web3Intent}, link your Origin Wallet by scanning the QR code with your phone&apos;s camera:<br />
+        </div>
+        <div style={{ backgroundColor: 'white', padding: '50px' }}>
+          <QRCode value={`${walletLandingUrl}/${code}${role ? `?role=${role}`: ''}`} />
+        </div>
+        <pre className="mb-0 mt-3">
+          {code}
+        </pre>
+      </Modal>
+    )
+  }
+}
 
 class Buy extends Component {
-  state = { linkerCode: null }
+  state = {}
   render() {
+    const walletType = this.props.web3.walletType
     if (this.state.redirect) {
       return <Redirect to={this.state.redirect} push />
     }
     return (
-      <Mutation
-        mutation={CreateLinkCodeMutation}
-        onCompleted={({ createLinkCode }) => {
-          console.log('linker code:', createLinkCode)
-          this.setState({ linkerCode: createLinkCode })
-        }}
-        onError={errorData => {
-          console.error('ERROR:', errorData)
-        }}
-        >
-        {createLinkerCode =>
+      <>
+        {walletType === 'mobile-unlinked' && (
+          <Mutation
+            mutation={CreateLinkCodeMutation}
+            onCompleted={({ createLinkCode }) => {
+              console.log('linker code:', createLinkCode)
+              this.setState({ linkerCode: createLinkCode })
+            }}
+            onError={errorData => {
+              console.error('ERROR:', errorData)
+            }}
+            >
+              {createLinkerCode =>
+                <>
+                  <button
+                    className={this.props.className}
+                    onClick={() => this.onClick(createLinkerCode)}
+                    children={this.props.children}
+                  />
+                  <MobileLinkerQRCode code={this.state.linkerCode} />
+                </>
+              }
+            </Mutation>
+        )}
+
+        {(walletType === 'metamask' || walletType === 'mobile-linked') && (
           <Mutation
             mutation={MakeOfferMutation}
             onCompleted={({ makeOffer }) => {
@@ -44,13 +86,12 @@ class Buy extends Component {
           >
             {makeOffer => (
               <>
-                {this.renderLinkerCode()}
-
                 <button
                   className={this.props.className}
-                  onClick={() => this.onClick(createLinkerCode)}
+                  onClick={() => this.onClick(makeOffer)}
                   children={this.props.children}
                 />
+                {console.log('makeOffer finished')}
                 {this.renderWaitModal()}
                 {this.state.error && (
                   <TransactionError
@@ -62,8 +103,8 @@ class Buy extends Component {
               </>
             )}
           </Mutation>
-        }
-      </Mutation>
+        )}
+      </>
     )
   }
 
@@ -92,29 +133,6 @@ class Buy extends Component {
       variables.fractionalData = { startDate, endDate }
     }
     makeOffer({ variables })
-  }
-
-  renderLinkerCode() {
-    console.log(this.state)
-    const { linkerCode } = this.state
-    if (!linkerCode) return null
-    const walletLandingUrl = 'https://www.originprotocol.com:5000/mobile'
-    const role = 'buyer'
-    const web3Intent = 'buy'
-
-    return (
-      <Modal backdrop="static">
-          <div style={{ marginBottom: '20px' }}>
-            To {web3Intent}, link your Origin Wallet by scanning the QR code with your phone&apos;s camera:<br />
-          </div>
-          <div style={{ backgroundColor: 'white', padding: '50px' }}>
-            <QRCode value={`${walletLandingUrl}/${linkerCode}${role ? `?role=${role}`: ''}`} />
-          </div>
-          <pre className="mb-0 mt-3">
-              {linkerCode}
-            </pre>
-      </Modal>
-    )
   }
 
   renderWaitModal() {

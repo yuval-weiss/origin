@@ -79,6 +79,7 @@ module.exports = `
     metaMaskAccount: Account
     metaMaskNetworkId: Int
     metaMaskNetworkName: String
+    walletType: String
   }
 
   type Account {

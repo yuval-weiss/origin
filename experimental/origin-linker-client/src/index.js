@@ -5,7 +5,13 @@ class MobileLinker {
     this.httpUrl = httpUrl
     this.portUrl = wsUrl
     this.sessionToken = null
+    // code for linking via QR code
+    this.linkCode = null
     this.accounts = []
+  }
+
+  linked() {
+    return false
   }
 
   async link() {

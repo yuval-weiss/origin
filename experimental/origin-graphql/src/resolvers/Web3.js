@@ -79,5 +79,10 @@ export default {
     const accounts = await contracts.metaMask.eth.getAccounts()
     if (!accounts || !accounts.length) return null
     return { id: accounts[0] }
+  },
+  walletType: () => {
+    if (contracts.metaMaskEnabled) return true
+    if (!contracts.linker) return null
+    return contracts.linker.linked() ? 'mobile-linked' : 'mobile-unlinked'
   }
 }
