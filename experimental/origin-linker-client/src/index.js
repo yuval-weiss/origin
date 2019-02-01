@@ -1,29 +1,30 @@
 import ZeroClientProvider from 'web3-provider-engine/zero'
 import uuidv1 from 'uuid/v1'
+import secp256k1 from 'secp256k1'
+import cryptoRandomString from 'crypto-random-string'
+import ecies from 'eth-ecies'
 
 const WALLET_LINKER_DATA = 'walletLinkerData'
+const LOCAL_KEY_STORE = 'walletLinker:lks'
 const PLACEHOLDER_ADDRESS = '0x3f17f1962B36e491b30A40b2405849e597Ba5FB5'
 
 class MobileLinker {
   constructor({ httpUrl, wsUrl, web3 }) {
     this.httpUrl = httpUrl
-    this.portUrl = wsUrl
+    this.wsUrl = wsUrl
     this.sessionToken = null
     // code for linking via QR code
     this.linkCode = null
     this.linked = false
     console.log('1', this.web3)
     this.web3 = web3
+    this.messagesWS = null
 
     // provider stuff
     this.accounts = []
     this.callbacks = {}
     this.pendingCall = null
     this.netId = 999 // TODO: unhardcode this
-  }
-
-  linked() {
-    return this.linked
   }
 
   async link() {
@@ -123,14 +124,42 @@ class MobileLinker {
     return provider
   }
 
+  getLinkPrivKey() {
+    console.log('getLinkPrivKey')
+    const localKey = localStorage.getItem(LOCAL_KEY_STORE)
+    const privKey = localKey || cryptoRandomString(64).toString('hex')
+    if (privKey != localKey)
+    {
+      localStorage.setItem(LOCAL_KEY_STORE, privKey)
+    }
+    return privKey
+  }
+
+  getLinkPubKey() {
+    console.log('getLinkPubKey')
+    return secp256k1
+      .publicKeyCreate(new Buffer(this.getLinkPrivKey(), 'hex'), false)
+      .slice(1)
+      .toString('hex')
+  }
+
+  ecDecrypt(buffer) {
+    const priv_key = this.getLinkPrivKey()
+    return ecies.decrypt(
+        new Buffer(priv_key, 'hex'),
+        new Buffer(buffer, 'hex')
+      )
+      .toString('utf8')
+  }
+
   // Grabs link code, which is used to generate QR codes.
   async generateLinkCode() {
     console.log('generateLinkCode called')
     const resp = await this.post('/api/wallet-linker/generate-code', {
       session_token: this.sessionToken,
       returnUrl: this.getReturnUrl(),
-      pending_call: null, // TODO: fill this in
-      pub_key: null, // TODO; fill this in
+      pending_call: this.pendingCall, // TODO: fill this in
+      pub_key: this.getLinkPubKey(),
       notify_wallet: this.notifyWallet
     })
     console.log('got link code response:', resp)
@@ -138,16 +167,109 @@ class MobileLinker {
     this.linked = resp.linked
     if (this.sessionToken !== resp.sessionToken) {
       this.sessionToken = resp.session_token
-      // TODO: start message sync
+      this.streamWalletMessages()
     }
     this.saveSessionStorage()
     return resp.link_code
   }
 
+  closeWalletMessages() {
+    if (this.messagesWS && this.messagesWS.readyState !== this.messagesWS.CLOSED) {
+      this.messagesWS.close()
+      this.messagesWS = null
+    }
+  }
+
+  // Stream mobile wallet messages from the linking server. Not to be confused
+  // with Origin Messaging.
+  async streamWalletMessages() {
+    this.closeWalletMessages()
+    if (!this.sessionToken) {
+      throw new Error('Cannot sync messages without session token')
+    }
+    const sessionToken = this.sessionToken || '-'
+    const messageId = this.lastMessageId || 0
+    const wsUrl = `${this.wsUrl}/api/wallet-linker/linked-messages/${sessionToken}/${messageId}`
+    const ws = new WebSocket(wsUrl)
+
+    ws.onmessage = e => this.processWalletMessage(JSON.parse(e.data))
+
+    ws.onclose = e => {
+      console.log('messages websocket closed:', e)
+      if (e.code != 1000) {
+        // If this is an abnormal close, try to reopen soon.
+        setTimeout(() => {
+          if (this.msg_ws === ws) {
+            this.syncLinkMessages()
+          }
+        }, 30000)
+      }
+    }
+
+    this.messagesWS = ws
+  }
+
+  processWalletMessage(m) {
+    const { type, data } = m.msg
+    const id = m.msgId
+
+    switch(type) {
+      case 'CONTEXT':
+        this.handleContextMessage(data)
+        break
+
+      default:
+        console.log('unknown message', type, data)
+    }
+
+    if (id) {
+      this.lastMessageId = id
+      this.saveSessionStorage()
+    }
+  }
+
+  // Handles the CONTEXT message, which contains the state for the linked
+  // mobile wallet.
+  handleContextMessage(msg) {
+    console.log('received context message:', msg)
+    if (msg.sessionToken) {
+      this.sessionToken = msg.sessionToken
+    }
+
+    if (!msg.linked && this.linked) {
+      throw new Error('TODO: logout')
+    }
+
+    this.linked = msg.linked
+    if (this.linked) {
+      // TODO: cancel pending links
+    }
+
+    const device = msg.device
+    if (!device) {
+      console.log('no device info found')
+      this.accounts = []
+      return
+    }
+
+    console.log('device info found')
+    this.accounts = device.accounts
+
+    // TODO: do we need to handle msg.network_rpc?
+    if (device.priv_data) {
+      const data = JSON.parse(this.ecDecrypt(device.priv_data))
+      if (data && data.essaging && this.callbacks['messaging']) {
+        console.log('got messaging data', data.messaging)
+        this.callbacks['messaging'](data.messaging)
+        // TODO: figure out what this does
+      }
+    }
+  }
+
   saveSessionStorage() {
     // TODO: should we really sync the linker server URL here?
     const walletData = {
-      accounts: this.generateLinkCode.accounts,
+      accounts: this.accounts,
       linked: this.linked, // TODO: implement
       lastMessageId: this.lastMessageId, // TODO: implement
       sessionToken: this.sessionToken

@@ -17,7 +17,7 @@ import withWeb3 from 'hoc/withWeb3'
 class MobileLinkerQRCode extends Component {
   render() {
     const { code } = this.props
-    const walletLandingUrl = 'https://www.originprotocol.com:5000/mobile'
+    const walletLandingUrl = 'https://www.originprotocol.com/mobile'
     const role = 'buyer'
     const web3Intent = 'buy'
 
@@ -45,12 +45,13 @@ class Buy extends Component {
   state = {}
   render() {
     const walletType = this.props.web3.walletType
+    console.log('wallet type', walletType)
     if (this.state.redirect) {
       return <Redirect to={this.state.redirect} push />
     }
     return (
       <>
-        {false && walletType === 'mobile-unlinked' && (
+        {walletType === 'mobile-unlinked' && (
           <Mutation
             mutation={CreateLinkCodeMutation}
             onCompleted={({ createLinkCode }) => {
@@ -74,7 +75,7 @@ class Buy extends Component {
             </Mutation>
         )}
 
-        {(true || walletType === 'metamask' || walletType === 'mobile-linked') && (
+        {(walletType === 'metamask' || walletType === 'mobile-linked') && (
           <Mutation
             mutation={MakeOfferMutation}
             onCompleted={({ makeOffer }) => {
