@@ -18,39 +18,25 @@ import withWeb3 from 'hoc/withWeb3'
 let times = 0
 
 class MobileLinkerQRCode extends Component {
-  componentDidMount() {
-    console.log('QR code mounted')
-  }
-
-  componentWillUnmount() {
-    console.log("QR code will unmount")
-  }
-
   render() {
     const walletLandingUrl = 'https://www.originprotocol.com/mobile'
     const role = 'buyer' // TODO: implement
     const web3Intent = 'buy' // TODO: implement
-    console.log('creating QR code')
 
     // TODO: add close button
     // TODO: tweak style?
     return (
-      <Query query={WalletLinkerQuery} pollInterval={1000} fetchPolicy="network-only" >
+      <Query query={WalletLinkerQuery} pollInterval={1000}>
         {({ data, error, loading, startPolling }) => {
-          times++
-          console.log(`${times} WALLETLINKER QUERY`)
-          if (loading || error) {
-            if (loading) console.log('-> still loading')
-            if (error) console.error('-> error:', error)
+          if (loading) return null
+          if (error) {
+            console.error(error)
             return null
           }
 
-          console.log('link code received', data.linkCode)
-          const linkCode = data.linkCode
+          const linkCode = data.walletLinker.linkCode
+          if (!linkCode) return null
 
-          if (!linkCode) {
-            return <>I should be polling {linkCode}</>
-          }
           return (
             <Modal>
               <div style={{ marginBottom: '20px' }}>
@@ -59,7 +45,7 @@ class MobileLinkerQRCode extends Component {
               <div style={{ backgroundColor: 'white', padding: '50px' }}>
                 <QRCode value={`${walletLandingUrl}/${linkCode}${role ? `?role=${role}`: ''}`} />
                 <pre className="mb-0 mt-3">
-                  {code}
+                  {linkCode}
                 </pre>
               </div>
             </Modal>

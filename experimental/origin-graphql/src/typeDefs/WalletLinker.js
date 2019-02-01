@@ -5,7 +5,7 @@ module.exports = `
 
   type WalletLinker {
     linkCode: String
-    linked: Boolean
+    linked: Boolean!
   }
 
   extend type Mutation {

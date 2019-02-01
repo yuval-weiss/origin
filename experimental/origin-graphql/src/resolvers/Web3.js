@@ -81,7 +81,6 @@ export default {
     return { id: accounts[0] }
   },
   walletType: () => {
-    console.log('walletType called')
     if (contracts.metaMaskEnabled) return true
     if (!contracts.linker) return null
     return contracts.linker.linked ? 'mobile-linked' : 'mobile-unlinked'

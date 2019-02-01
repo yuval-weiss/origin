@@ -13,6 +13,7 @@ import Identity from './Identity'
 import Conversation from './messaging/Conversation'
 import Messaging from './messaging/Messaging'
 import UserRegistry from './UserRegistry'
+import WalletLinker from './linker/WalletLinker'
 import Config from './Config'
 import Mutation from '../mutations/index'
 
@@ -40,5 +41,6 @@ export default {
   Conversation,
   Messaging,
   UserRegistry,
+  WalletLinker,
   Config
 }

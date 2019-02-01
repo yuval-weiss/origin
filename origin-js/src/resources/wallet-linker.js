@@ -397,14 +397,15 @@ export default class WalletLinker {
 
 
   async generateLinkCode() {
-    console.log('generateLinkCode')
-    const ret = await this.post('generate-code', {
+    const opts = {
       session_token: this.session_token,
       return_url: this.getReturnUrl(),
       pending_call: this.pending_call,
       pub_key: this.getLinkPubKey(),
       notify_wallet: this.notify_wallet
-    })
+    }
+    console.log('generateLinkCode', opts)
+    const ret = await this.post('generate-code', opts)
     if (ret) {
       this.link_code = ret.link_code
       this.linked = ret.linked

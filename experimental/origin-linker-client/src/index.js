@@ -78,12 +78,13 @@ class MobileLinker {
       this.generateLinkCode()
     } else {
       const callWalletUrl = `/api/wallet-linker/call-wallet/${this.sessionToken}`
-      const resp = this.post(callWalletUrl, {
+      const body = {
         call_id: callId,
         accounts: this.accounts,
         call,
         return_url: this.getReturnUrl()
-      })
+      }
+      const resp = this.post(callWalletUrl, body)
 
       resp
         .then(() => {}) // TODO: understand this
@@ -155,14 +156,18 @@ class MobileLinker {
 
   // Grabs link code, which is used to generate QR codes.
   async generateLinkCode() {
-    console.log('generateLinkCode called')
-    const resp = await this.post('/api/wallet-linker/generate-code', {
+    const body = {
       session_token: this.sessionToken,
       returnUrl: this.getReturnUrl(),
-      pending_call: this.pendingCall, // TODO: fill this in
+      pending_call: this.pendingCall && {
+        call_id: this.pendingCall.callId,
+        call: this.pendingCall.call
+      },
       pub_key: this.getLinkPubKey(),
       notify_wallet: this.notifyWallet
-    })
+    }
+    console.log('generateLinkCode', body)
+    const resp = await this.post('/api/wallet-linker/generate-code', body)
     console.log('got link code response:', resp)
     this.linkCode = resp.link_code
     this.linked = resp.linked
