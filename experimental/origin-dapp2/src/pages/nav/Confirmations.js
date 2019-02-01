@@ -12,6 +12,7 @@ import Segments from 'components/Segments'
 import TransactionDescription from 'components/TransactionDescription'
 
 class TransactionsNav extends Component {
+
   render() {
     return (
       <Query
@@ -21,7 +22,10 @@ class TransactionsNav extends Component {
         skip={!this.props.wallet}
       >
         {({ loading, error, data }) => {
+          console.log(loading, error)
           if (loading || error) return null
+
+          console.log(new Date(), 'polling for transactions')
 
           const blockNumber = get(data, 'web3.blockNumber', 0)
           const allNodes = get(data, 'marketplace.user.transactions.nodes', [])

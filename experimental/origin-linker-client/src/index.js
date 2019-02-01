@@ -70,11 +70,12 @@ class MobileLinker {
     const callId = uuidv1()
     this.callbacks[callId] = async data => callback(undefined, data.hash)
 
-    // TODO: what is processTransaction
     const call = this.createCall('processTransaction', { txn })
     if (!this.linked) {
       this.pendingCall  = { callId, call }
-      // TODO: start link --> how do we do this?
+      // We let this async call run on its own. It's up to the UI to poll for
+      // linkCode and display it.
+      this.generateLinkCode()
     } else {
       const callWalletUrl = `/api/wallet-linker/call-wallet/${this.sessionToken}`
       const resp = this.post(callWalletUrl, {

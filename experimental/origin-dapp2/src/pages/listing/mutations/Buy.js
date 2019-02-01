@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Mutation } from 'react-apollo'
+import { Query, Mutation } from 'react-apollo'
 import get from 'lodash/get'
 import QRCode from 'qrcode.react'
 
@@ -10,33 +10,62 @@ import TransactionError from 'components/TransactionError'
 import WaitForTransaction from 'components/WaitForTransaction'
 import Redirect from 'components/Redirect'
 import Modal from 'components/Modal'
+import WalletLinkerQuery from 'queries/WalletLinker'
 import withCanTransact from 'hoc/withCanTransact'
 import withWallet from 'hoc/withWallet'
 import withWeb3 from 'hoc/withWeb3'
 
-class MobileLinkerQRCode extends Component {
-  render() {
-    const { code } = this.props
-    const walletLandingUrl = 'https://www.originprotocol.com/mobile'
-    const role = 'buyer'
-    const web3Intent = 'buy'
+let times = 0
 
-    if (!code) return <></>
+class MobileLinkerQRCode extends Component {
+  componentDidMount() {
+    console.log('QR code mounted')
+  }
+
+  componentWillUnmount() {
+    console.log("QR code will unmount")
+  }
+
+  render() {
+    const walletLandingUrl = 'https://www.originprotocol.com/mobile'
+    const role = 'buyer' // TODO: implement
+    const web3Intent = 'buy' // TODO: implement
+    console.log('creating QR code')
 
     // TODO: add close button
     // TODO: tweak style?
     return (
-      <Modal>
-        <div style={{ marginBottom: '20px' }}>
-          To {web3Intent}, link your Origin Wallet by scanning the QR code with your phone&apos;s camera:<br />
-        </div>
-        <div style={{ backgroundColor: 'white', padding: '50px' }}>
-          <QRCode value={`${walletLandingUrl}/${code}${role ? `?role=${role}`: ''}`} />
-          <pre className="mb-0 mt-3">
-            {code}
-          </pre>
-        </div>
-      </Modal>
+      <Query query={WalletLinkerQuery} pollInterval={1000} fetchPolicy="network-only" >
+        {({ data, error, loading, startPolling }) => {
+          times++
+          console.log(`${times} WALLETLINKER QUERY`)
+          if (loading || error) {
+            if (loading) console.log('-> still loading')
+            if (error) console.error('-> error:', error)
+            return null
+          }
+
+          console.log('link code received', data.linkCode)
+          const linkCode = data.linkCode
+
+          if (!linkCode) {
+            return <>I should be polling {linkCode}</>
+          }
+          return (
+            <Modal>
+              <div style={{ marginBottom: '20px' }}>
+                To {web3Intent}, link your Origin Wallet by scanning the QR code with your phone&apos;s camera:<br />
+              </div>
+              <div style={{ backgroundColor: 'white', padding: '50px' }}>
+                <QRCode value={`${walletLandingUrl}/${linkCode}${role ? `?role=${role}`: ''}`} />
+                <pre className="mb-0 mt-3">
+                  {code}
+                </pre>
+              </div>
+            </Modal>
+          )
+        }}
+      </Query>
     )
   }
 }
@@ -51,60 +80,36 @@ class Buy extends Component {
     }
     return (
       <>
-        {walletType === 'mobile-unlinked' && (
-          <Mutation
-            mutation={CreateLinkCodeMutation}
-            onCompleted={({ createLinkCode }) => {
-              console.log('linker code:', createLinkCode)
-              this.setState({ linkerCode: createLinkCode })
-            }}
-            onError={errorData => {
-              console.error('ERROR:', errorData)
-            }}
-            >
-              {createLinkerCode =>
-                <>
-                  <button
-                    className={this.props.className}
-                    onClick={() => this.onClick(createLinkerCode)}
-                    children={this.props.children}
-                  />
-                  <MobileLinkerQRCode code={this.state.linkerCode} />
-                </>
-              }
-            </Mutation>
-        )}
+        <Mutation
+          mutation={MakeOfferMutation}
+          onCompleted={({ makeOffer }) => {
+            this.setState({ waitFor: makeOffer.id })
+          }}
+          onError={errorData =>
+            this.setState({ waitFor: false, error: 'mutation', errorData })
+          }
+        >
+          {makeOffer => (
+            <>
+              { /* TODO: move this somewhere central */ }
+              <MobileLinkerQRCode />
 
-        {(walletType === 'metamask' || walletType === 'mobile-linked') && (
-          <Mutation
-            mutation={MakeOfferMutation}
-            onCompleted={({ makeOffer }) => {
-              this.setState({ waitFor: makeOffer.id })
-            }}
-            onError={errorData =>
-              this.setState({ waitFor: false, error: 'mutation', errorData })
-            }
-          >
-            {makeOffer => (
-              <>
-                <button
-                  className={this.props.className}
-                  onClick={() => this.onClick(makeOffer)}
-                  children={this.props.children}
+              <button
+                className={this.props.className}
+                onClick={() => this.onClick(makeOffer)}
+                children={this.props.children}
+              />
+              {this.renderWaitModal()}
+              {this.state.error && (
+                <TransactionError
+                  reason={this.state.error}
+                  data={this.state.errorData}
+                  onClose={() => this.setState({ error: false })}
                 />
-                {console.log('makeOffer finished')}
-                {this.renderWaitModal()}
-                {this.state.error && (
-                  <TransactionError
-                    reason={this.state.error}
-                    data={this.state.errorData}
-                    onClose={() => this.setState({ error: false })}
-                  />
-                )}
-              </>
-            )}
-          </Mutation>
-        )}
+              )}
+            </>
+          )}
+        </Mutation>
       </>
     )
   }
