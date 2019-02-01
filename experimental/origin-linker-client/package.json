@@ -8,6 +8,8 @@
     "test": "echo \"Error: run tests from root\" && exit 1"
   },
   "dependencies": {
+    "uuid": "^3.3.2",
+    "web3-provider-engine": "^14.1.0"
   },
   "devDependencies": {
   }

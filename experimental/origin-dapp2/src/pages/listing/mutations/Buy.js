@@ -32,10 +32,10 @@ class MobileLinkerQRCode extends Component {
         </div>
         <div style={{ backgroundColor: 'white', padding: '50px' }}>
           <QRCode value={`${walletLandingUrl}/${code}${role ? `?role=${role}`: ''}`} />
+          <pre className="mb-0 mt-3">
+            {code}
+          </pre>
         </div>
-        <pre className="mb-0 mt-3">
-          {code}
-        </pre>
       </Modal>
     )
   }
@@ -50,7 +50,7 @@ class Buy extends Component {
     }
     return (
       <>
-        {walletType === 'mobile-unlinked' && (
+        {false && walletType === 'mobile-unlinked' && (
           <Mutation
             mutation={CreateLinkCodeMutation}
             onCompleted={({ createLinkCode }) => {
@@ -74,7 +74,7 @@ class Buy extends Component {
             </Mutation>
         )}
 
-        {(walletType === 'metamask' || walletType === 'mobile-linked') && (
+        {(true || walletType === 'metamask' || walletType === 'mobile-linked') && (
           <Mutation
             mutation={MakeOfferMutation}
             onCompleted={({ makeOffer }) => {

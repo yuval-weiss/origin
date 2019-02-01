@@ -197,7 +197,8 @@ export function setNetwork(net, customConfig) {
 
     context.linker = OriginLinkerClient({
       httpUrl: config.linker,
-      wsUrl: config.linkerWS
+      wsUrl: config.linkerWS,
+      web3: context.web3
     })
   }
 
@@ -304,6 +305,7 @@ export function setNetwork(net, customConfig) {
     })
   }
   setMetaMask()
+  setLinkerClient()
 }
 
 function setMetaMask() {
@@ -323,6 +325,26 @@ function setMetaMask() {
   if (context.messaging) {
     context.messaging.web3 = context.web3Exec
   }
+}
+
+function setLinkerClient() {
+  if (!context.linker) return
+  if (metaMask && metaMaskEnabled) return
+
+  const linkerProvider = context.linker.getProvider()
+  context.web3Exec = applyWeb3Hack(new Web3(linkerProvider))
+  // placeholder account
+  // TODO: extract
+  context.defaultLinkerAccount = '0x3f17f1962B36e491b30A40b2405849e597Ba5FB5'
+
+  // TODO: fix token contracts
+  // TODO: fix messaging?
+  context.marketplaceL = new context.web3Exec.eth.Contract(
+    MarketplaceContract.abi,
+    context.marketplace._address
+  )
+  context.marketplaceExec = context.marketplaceL
+  console.log('marketplaceExec')
 }
 
 export function toggleMetaMask(enabled) {

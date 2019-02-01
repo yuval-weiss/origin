@@ -145,6 +145,7 @@ class Linker {
   }
 
   sendWalletMessage(linkedObj, type, data) {
+    console.log('sendWalletMessage', arguments)
     const walletToken = this.getWalletToken(linkedObj)
     if (walletToken)
     {
@@ -153,6 +154,7 @@ class Linker {
   }
 
   sendSessionMessage(linkedObj, sessionToken, type, data) {
+    console.log('sendSessionMessage', arguments)
     return this.messages.addMessage(linkedObj.clientToken, {type, session_token:sessionToken, data})
   }
 

@@ -444,6 +444,7 @@ class ContractService {
     }
     // Setup options
     const opts = { from, gas, value }
+    console.log('from', opts.from, await this.currentAccount())
     opts.from = opts.from || (await this.currentAccount())
     // Get contract and run trasaction
     const contract = await this.deployed(contractDefinition)
@@ -452,6 +453,7 @@ class ContractService {
     if (method._method.constant) {
       return await method.call(opts)
     }
+    console.log(contract)
     // set gas
     opts.gas = (opts.gas || (await method.estimateGas(opts))) + additionalGas
     const transactionReceipt = await new Promise((resolve, reject) => {
@@ -460,6 +462,9 @@ class ContractService {
       }
       const sendCallback = method
         .send(opts)
+      console.log('opts', opts)
+      console.log('send', method.send)
+      console.log('sendCallback', sendCallback)
 
       this.handleTransactionCallbacks(
         contract,

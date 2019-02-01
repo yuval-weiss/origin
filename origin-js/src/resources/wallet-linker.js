@@ -116,6 +116,7 @@ export default class WalletLinker {
 
   getProvider() {
     console.log('getProvider called')
+    console.log(this)
     const provider = ZeroClientProvider({
       rpcUrl:
         this.networkRpcUrl && this.linked
@@ -126,6 +127,9 @@ export default class WalletLinker {
       //signPersonalMessage: this.signPersonalMessage.bind(this),
       processTransaction: this.processTransaction.bind(this)
     })
+    console.log('rpcUrl',this.networkRpcUrl && this.linked
+    ? this.networkRpcUrl
+    : this.web3.currentProvider.host)
     const hookedWallet = provider._providers[6]
 
     if (!hookedWallet.validateTransaction) {
@@ -139,11 +143,12 @@ export default class WalletLinker {
     //take out the caching which is being stupid..
     provider._providers.splice(3, 1)
     provider._providers.splice(4, 1)
+    console.log(provider._providers)
     return provider
   }
 
   getAccounts(callback) {
-    console.log('getAccounts')
+    //console.log('getAccounts')
     if (callback) {
       callback(undefined, this.accounts)
     } else {
@@ -205,7 +210,7 @@ export default class WalletLinker {
   }
 
   processTransaction(txn_object, callback) {
-    console.log('processTransaction called')
+    console.log('processTransaction called', arguments)
     const call_id = uuidv1()
     //translate gas to gasLimit
     txn_object['gasLimit'] = txn_object['gas']
@@ -252,7 +257,7 @@ export default class WalletLinker {
   }
 
   processMessage(m) {
-    console.log('processMessage')
+    console.log('processMessage', m)
     const type = m.msg.type
     const message = m.msg.data
     const msgId = m.msgId
@@ -414,7 +419,6 @@ export default class WalletLinker {
   }
 
   getLinkCode() {
-    console.log('getLinkCode')
     return this.link_code
   }
 

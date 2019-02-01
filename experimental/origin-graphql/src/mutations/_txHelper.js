@@ -100,6 +100,7 @@ export default function txHelper({
         }
       })
       .on('error', function(err) {
+        console.log('tx error', err)
         if (txHash) {
           pubsub.publish('TRANSACTION_UPDATED', {
             transactionUpdated: {
