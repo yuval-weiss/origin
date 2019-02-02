@@ -154,7 +154,7 @@ class Linker {
   }
 
   sendSessionMessage(linkedObj, sessionToken, type, data) {
-    console.log('sendSessionMessage', arguments)
+    console.log('sendSessionMessage', type, arguments)
     return this.messages.addMessage(linkedObj.clientToken, {type, session_token:sessionToken, data})
   }
 
@@ -361,6 +361,9 @@ class Linker {
   async linkWallet(walletToken, code, current_rpc, current_accounts, priv_data) {
     const linkedCodeObjs = await this.findUnexpiredCode(code)
     console.log(linkedCodeObjs)
+    for (const obj of linkedCodeObjs) {
+      console.log('pending call context:', obj.pendingCallContext)
+    }
     if (!linkedCodeObjs || linkedCodeObjs.length != 1)
     {
       throw("Cannot find code to link to.")

@@ -103,7 +103,7 @@ const Configs = {
   localhost: {
     provider: `http://${HOST}:8545`,
     providerWS: `ws://${HOST}:8545`,
-    ipfsGateway: `http://${HOST}:9090`,
+    ipfsGateway: `http://${HOST}:8080`,
     ipfsRPC: `http://${HOST}:5002`,
     bridge: 'https://bridge.staging.originprotocol.com',
     automine: 2000,
@@ -122,7 +122,7 @@ const Configs = {
   test: {
     provider: `http://${HOST}:8545`,
     providerWS: `ws://${HOST}:8545`,
-    ipfsGateway: `http://${HOST}:9090`,
+    ipfsGateway: `http://${HOST}:8080`,
     ipfsRPC: `http://${HOST}:5002`
   }
 }

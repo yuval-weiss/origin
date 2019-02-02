@@ -12,7 +12,7 @@ class MobileLinker {
   constructor({ httpUrl, wsUrl, web3 }) {
     this.httpUrl = httpUrl
     this.wsUrl = wsUrl
-    this.sessionToken = null
+    this.sessionToken = ''
     // code for linking via QR code
     this.linkCode = null
     this.linked = false
@@ -48,11 +48,10 @@ class MobileLinker {
     }
   }
 
-
-  async createCall(method, params) {
+  createCall(method, params) {
     return {
       method,
-      net_id: await this.getNetId(),
+      net_id: this.getNetId(),
       params
     }
   }
