@@ -69,7 +69,7 @@ class MobileLinker {
     const callId = uuidv1()
     this.callbacks[callId] = async data => callback(undefined, data.hash)
 
-    const call = this.createCall('processTransaction', { txn })
+    const call = this.createCall('processTransaction', { txn_object: txn })
     if (!this.linked) {
       this.pendingCall  = { callId, call }
       // We let this async call run on its own. It's up to the UI to poll for

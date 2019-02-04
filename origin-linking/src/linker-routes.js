@@ -1,6 +1,7 @@
 import express from 'express'
 import expressWs from 'express-ws'
 import Linker from './logic/linker'
+import util from 'util'
 
 const router = express.Router()
 //doing this is a hack for detached routers...
@@ -73,6 +74,7 @@ router.post("/call-wallet/:sessionToken", async (req, res) => {
   const {sessionToken} = req.params
   const {account, call_id, call, return_url} = req.body
   const success = await linker.callWallet(clientToken, sessionToken, account, call_id, call, return_url)
+  console.log('call-wallet return', success)
   res.send({success})
 })
 
@@ -199,6 +201,8 @@ router.ws("/wallet-messages/:walletToken/:readId", (ws, req) => {
 
   const closeHandler = linker.handleMessages(walletToken, readId, (msg, msgId) =>
     {
+      console.log('sending message:')
+      console.log(util.inspect(msg))
       ws.send(JSON.stringify({msg, msgId}))
     })
   ws.on("close", () => {
