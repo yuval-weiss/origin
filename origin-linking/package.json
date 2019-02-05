@@ -10,6 +10,8 @@
     "build": "per-env",
     "build:production": "babel src -d dist",
     "migrate": "sequelize db:migrate",
+    "prettier": "prettier --write *.js \"**/*.js\"",
+    "prettier:check": "prettier -c *.js \"**/*.js\"",
     "start": "per-env",
     "start:development": "nodemon -r @babel/register -r source-map-support src/index.js",
     "start:production": "node dist/index.js",
@@ -36,6 +38,7 @@
     "lodash": "^4.17.11",
     "morgan": "^1.9.1",
     "origin": "^0.8.6",
+    "prettier": "^1.16.3",
     "per-env": "^1.0.2",
     "pg": "^7.7.1",
     "pg-hstore": "^2.3.2",
@@ -61,5 +64,9 @@
     "plugins": [
       "@babel/plugin-transform-runtime"
     ]
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true
   }
 }

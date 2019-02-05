@@ -1,4 +1,4 @@
-'use strict';
+'use strict'
 import app from '../src/index'
 import chai from 'chai'
 import request from 'supertest'
