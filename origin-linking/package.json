@@ -10,6 +10,7 @@
     "build": "per-env",
     "build:production": "babel src -d dist",
     "migrate": "sequelize db:migrate",
+    "lint": "eslint . && npm run prettier:check",
     "prettier": "prettier --write *.js \"**/*.js\"",
     "prettier:check": "prettier -c *.js \"**/*.js\"",
     "start": "per-env",

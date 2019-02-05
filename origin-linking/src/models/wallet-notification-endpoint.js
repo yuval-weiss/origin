@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       tableName: 'wallet_notification_endpoint'
     }
   )
-  WalletNotificationEndpoint.associate = function(models) {
+  WalletNotificationEndpoint.associate = function() {
     // associations can be defined here
   }
   return WalletNotificationEndpoint

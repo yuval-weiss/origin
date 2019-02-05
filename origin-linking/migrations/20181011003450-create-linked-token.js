@@ -55,7 +55,7 @@ module.exports = {
       .then(() => queryInterface.addIndex(TableName, ['wallet_token']))
       .then(() => queryInterface.addIndex(TableName, ['code']))
   },
-  down: (queryInterface, Sequelize) => {
+  down: queryInterface => {
     return queryInterface.dropTable(TableName)
   }
 }

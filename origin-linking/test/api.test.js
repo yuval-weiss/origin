@@ -1,4 +1,7 @@
 'use strict'
+
+/*
+
 import app from '../src/index'
 import chai from 'chai'
 import request from 'supertest'
@@ -7,7 +10,6 @@ import WebSocket from 'ws'
 const expect = chai.expect
 
 describe('API tests', () => {
-  /*
   describe("Base path", () => {
     it ('should return Hellow World!', done => {
       request(app).get('/wallet-linker/').end((err, res) => {
@@ -25,5 +27,8 @@ describe('API tests', () => {
         })
       })
     })
-  })*/
+  })
 })
+
+*/
+

@@ -22,7 +22,7 @@ const CODE_EXPIRATION_TIME_MINUTES = 60
 const CODE_SIZE = 16
 
 class Linker {
-  constructor({} = {}) {
+  constructor() {
     this.messages = new MessageQueue()
 
     if (process.env.APNS_KEY_FILE) {
@@ -71,14 +71,14 @@ class Linker {
   }
 
   async _generateNonConflictingCode() {
-    for (const i of Array(10)) {
+    Array(10).forEach(async () => {
       const code = this._generateNewCode(CODE_SIZE)
       const existing = await this.findUnexpiredCode(code)
       if (existing.length == 0) {
         return code
       }
-    }
-    throw 'We hit max retries without finding a none repreated code!'
+    })
+    throw 'We hit max retries without finding a non-repeated code!'
   }
 
   async initClientSession(clientToken, sessionToken, lastMessageId) {
@@ -192,7 +192,7 @@ class Linker {
     this.sendNotify(notify, msg, data)
   }
 
-  generateInitSession(linkedObj) {
+  generateInitSession() {
     const sessionToken = uuidv4()
     return sessionToken
   }
@@ -293,7 +293,7 @@ class Linker {
     }
   }
 
-  async getMetaFromCall({ call, net_id, params: { txn_object } }) {
+  async getMetaFromCall({ net_id, params: { txn_object } }) {
     if (txn_object) {
       return origin.reflection.extractContractCallMeta(
         net_id || txn_object.chainId,
@@ -435,7 +435,7 @@ class Linker {
     const pendingCallContext = linkedObj.pendingCallContext
     const appInfo = linkedObj.appInfo
 
-    const notify = await this.getWalletNotification(walletToken)
+    await this.getWalletNotification(walletToken)
 
     linkedObj.walletToken = walletToken
     linkedObj.linked = true

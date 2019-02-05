@@ -40,7 +40,7 @@ module.exports = {
       })
       .then(() => queryInterface.addIndex(TableName, ['eth_address']))
   },
-  down: (queryInterface, Sequelize) => {
+  down: queryInterface => {
     return queryInterface.dropTable(TableName)
   }
 }
